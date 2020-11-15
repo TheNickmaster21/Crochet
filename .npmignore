@@ -1,0 +1,4 @@
+  
+*
+!out/*.lua
+!out/*.d.ts
