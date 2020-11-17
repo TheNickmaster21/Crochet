@@ -1,6 +1,5 @@
 /** Services and controllers implementing this interface will have their onInit() method
- *  called after start() is called on the server Crochet but before all other services
- *  and controllers may be initialized.
+ *  called immediately after they are registered.
  */
 export interface OnInit {
     onInit(): void;

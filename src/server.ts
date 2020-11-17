@@ -23,18 +23,49 @@ export class CrochetServerImplementation extends CrochetCore {
         this.eventFolder.Name = 'Events';
     }
 
+    /**
+     * Register mulitple services at once.
+     *
+     * @param serviceConstructors The constuctors of multiple services being registered
+     * @throws Services can only be registered before start() has been called
+     * @throws Services can only be registered once
+     */
     public registerServices(serviceConstructors: ServiceConstructor[]): void {
         serviceConstructors.forEach((serviceConstructor) => this.registerService(serviceConstructor));
     }
 
+    /**
+     * Register a service. Once a service is registered, it's onInit method will be called (if one
+     * exists). Once services are registered, they can be retreived on the server by calling getService().
+     *
+     * @param serviceConstructor The constructor of the Service being registered
+     * @throws Services can only be registered before start() has been called
+     * @throws Services can only be registered once
+     *
+     * @example CrochetServer.registerService(MyService);
+     */
     public registerService(serviceConstructor: ServiceConstructor): void {
         assert(!this.starting, 'Services cannot be registered after start() has already been called!');
 
         const serviceKey = tostring(serviceConstructor);
         assert(!this.services.has(serviceKey), `Duplicate service for name ${serviceKey}!`);
-        this.services.set(tostring(serviceConstructor), new serviceConstructor());
+        const service = new serviceConstructor();
+        this.services.set(tostring(serviceConstructor), service);
+
+        if ('onInit' in service) {
+            (service as OnInit).onInit();
+        }
     }
 
+    /**
+     * Retreive the service for a given Service class.
+     *
+     * @param serviceConstructor
+     * @return A singleton implementation of the give serviceContructor
+     * @throws The given serviceConstructor must have been registered before this method is called!
+     *
+     * @example CrochetServer.getService(MyService); // Returns MyService instance
+     */
     public getService<S extends ServiceConstructor>(serviceConstructor: S): InstanceType<S> {
         const serviceKey = tostring(serviceConstructor);
         assert(this.services.has(serviceKey), `No service registered for name ${serviceKey}!`);
@@ -56,6 +87,10 @@ export class CrochetServerImplementation extends CrochetCore {
         remoteFunction.OnServerInvoke = functionBinding as (player: Player, ...args: unknown[]) => unknown;
     }
 
+    /**
+     *
+     * @param functionDefinition
+     */
     public getClientSideRemoteFunction<A extends unknown[], R>(
         functionDefinition: FunctionDefinition<A, R>
     ): (player: Player, ...args: A) => R {
@@ -110,12 +145,6 @@ export class CrochetServerImplementation extends CrochetCore {
     public start(): void {
         assert(!this.starting, 'start() has already been called!');
         this.starting = true;
-
-        this.services.values().forEach((service) => {
-            if ('onInit' in service) {
-                (service as OnInit).onInit();
-            }
-        });
 
         this.CrochetFolder!.Parent = script.Parent;
 

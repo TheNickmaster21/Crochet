@@ -20,20 +20,15 @@ export class CrochetClientImplementation extends CrochetCore {
         this.eventFolder = this.CrochetFolder.WaitForChild('Events') as Folder;
     }
 
-    /** Start should be called once by the client to setup all controllers. Unlike on the server,
-     *  the start() method on the ClientCrochet returns a promise that waits on the server to
-     *  start. All OnInit() methods are called as soon as start() is called but all onStart()
-     *  methods are called after all other onInit methods are called AND after the server starts.
+    /**
+     * Start should be called once by the client to setup all controllers. Unlike on the server,
+     * the start() method on the ClientCrochet returns a promise that waits on the server to
+     * start. All OnInit() methods are called as soon as start() is called but all onStart()
+     * methods are called after all other onInit methods are called AND after the server starts.
      */
     public async start(): Promise<void> {
         if (this.startPromise === undefined) {
             this.startPromise = new Promise<void>((resolve) => {
-                this.controllers.values().forEach((controller) => {
-                    if ('onInit' in controller) {
-                        (controller as OnInit).onInit();
-                    }
-                });
-
                 Promise.spawn(() => {
                     script.Parent?.WaitForChild('Started');
                     this.controllers.values().forEach((controller) => {
@@ -54,10 +49,27 @@ export class CrochetClientImplementation extends CrochetCore {
         return this.startPromise;
     }
 
+    /**
+     *  Register mulitple controllers at once.
+     *
+     * @param controllerConstructors The constuctors of multiple controllers being registered
+     * @throws Controllers can only be registered before start() has been called
+     * @throws Controllers can only be registered once
+     */
     public registerControllers(controllerConstructors: ControllerConstructor[]): void {
         controllerConstructors.forEach((controllerConstructor) => this.registerController(controllerConstructor));
     }
 
+    /**
+     *  Register a controller. Once a controller is registered, it's onInit method will be called (if one
+     *  exists). Once controllers are registered, they can be retreived on the server by calling getController().
+     *
+     * @param controllerConstructor  The constructor of the Controller being registered
+     * @throws Controllers can only be registered before start() has been called
+     * @throws Controllers can only be registered once
+     *
+     * @example CrochetClient.registerController(MyController);
+     *  */
     public registerController(controllerConstructor: ControllerConstructor): void {
         assert(
             this.startPromise === undefined,
@@ -66,9 +78,23 @@ export class CrochetClientImplementation extends CrochetCore {
 
         const controllerKey = tostring(controllerConstructor);
         assert(!this.controllers.has(controllerKey), `Duplicate controller for name ${controllerKey}!`);
-        this.controllers.set(tostring(controllerConstructor), new controllerConstructor());
+        const controller = new controllerConstructor();
+        this.controllers.set(tostring(controllerConstructor), controller);
+
+        if ('onInit' in controller) {
+            (controller as OnInit).onInit();
+        }
     }
 
+    /**
+     * Retreive the controller for a given Controller class.
+     *
+     * @param controllerConstructor
+     * @return A singleton implementation of the give controllerConstructor
+     * @throws The given controllerConstructor must have been registered before this method is called!
+     *
+     * e.g. CrochetClient.getController(MyController); // Returns MyController instance
+     */
     public getController<S extends ControllerConstructor>(controllerConstructor: S): InstanceType<S> {
         const controllerKey = tostring(controllerConstructor);
         assert(this.controllers.has(controllerKey), `No controller registered for name ${controllerKey}!`);
