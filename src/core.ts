@@ -21,6 +21,12 @@ export interface OnHeartbeat {
     onHeartbeat(step: number): void;
 }
 
+/** Type for functions that allow typechecking for functions and events. */
+export type TypeCheck<T> = (value: unknown) => value is T;
+
+/** Base function type for RemoteFunctions and BindableFunctions. */
+export type UnknownFunction = (...params: never[]) => unknown;
+
 /** Function definitions are used to define functions that are bound to remote
  * functions and bindable functions. Function Definitions are used by the
  * Crochet to indentify functions in a type safe way.
@@ -29,10 +35,14 @@ export interface OnHeartbeat {
  *     second argument, and returns a boolean
  * new FunctionDefinition<[string, number], boolean>('TestFunction')
  */
-export class FunctionDefinition<A extends unknown[], R> {
+export class FunctionDefinition<F extends UnknownFunction> {
     private static functionDefinitionNames = new Set<string>();
 
-    constructor(public functionIdentifier: string) {
+    constructor(
+        public functionIdentifier: string
+    ) // public parameterTypeGaurds?: { [K in keyof Parameters<F>]: (value: unknown) => value is Parameters<F>[K] },
+    // public returnTypeGuard?: TypeCheck<ReturnType<F>>
+    {
         assert(
             !FunctionDefinition.functionDefinitionNames.has(functionIdentifier),
             `There is already a function defined with the identifier: ${functionIdentifier}`
@@ -51,7 +61,10 @@ export class FunctionDefinition<A extends unknown[], R> {
 export class EventDefinition<A extends unknown[]> {
     private static eventDefinitionNames = new Set<string>();
 
-    constructor(public eventIdentifier: string) {
+    constructor(
+        public eventIdentifier: string
+    ) // public parameterTypeGaurds?: { [K in keyof A]: (value: unknown) => value is A[K] }
+    {
         assert(
             !EventDefinition.eventDefinitionNames.has(eventIdentifier),
             `There is already an event defined with the identifier: ${eventIdentifier}`
@@ -67,7 +80,7 @@ export abstract class CrochetCore {
     protected functionFolder?: Folder;
     protected eventFolder?: Folder;
 
-    public registerBindableFunction<A extends unknown[], R>(functionDefinition: FunctionDefinition<A, R>): void {
+    public registerBindableFunction<F extends UnknownFunction>(functionDefinition: FunctionDefinition<F>): void {
         const name = functionDefinition.functionIdentifier;
         assert(this.functionFolder?.FindFirstChild(name) === undefined, `Duplicate function for name ${name}!`);
         const bindableFunction = new Instance('BindableFunction');
@@ -75,23 +88,21 @@ export abstract class CrochetCore {
         bindableFunction.Parent = this.functionFolder;
     }
 
-    public bindBindableFunction<A extends unknown[], R>(
-        functionDefinition: FunctionDefinition<A, R>,
-        functionBinding: (...args: A) => R
+    public bindBindableFunction<F extends UnknownFunction>(
+        functionDefinition: FunctionDefinition<F>,
+        functionBinding: F
     ): void {
         const bindableFunction = this.fetchFunctionWithDefinition(functionDefinition) as BindableFunction;
-        bindableFunction.OnInvoke = functionBinding as (...args: unknown[]) => unknown;
+        bindableFunction.OnInvoke = functionBinding as F;
     }
 
-    public getBindableFunction<A extends unknown[], R>(
-        functionDefinition: FunctionDefinition<A, R>
-    ): (...args: A) => R {
+    public getBindableFunction<F extends UnknownFunction>(functionDefinition: FunctionDefinition<F>): F {
         const bindableFunction = this.fetchFunctionWithDefinition(functionDefinition) as BindableFunction;
-        return ((...args: A) => bindableFunction.Invoke(...args)) as (...args: A) => R;
+        return ((...params: Parameters<F>) => bindableFunction.Invoke(...params)) as F;
     }
 
     protected fetchFunctionWithDefinition(
-        functionDefinition: FunctionDefinition<unknown[], unknown>
+        functionDefinition: FunctionDefinition<UnknownFunction>
     ): RemoteFunction | BindableFunction {
         const name = functionDefinition.functionIdentifier;
         const func = this.functionFolder?.FindFirstChild(name);
@@ -108,15 +119,15 @@ export abstract class CrochetCore {
 
     public bindBindableEvent<A extends unknown[]>(
         eventDefinition: EventDefinition<A>,
-        functionBinding: (...args: A) => void
+        functionBinding: (...params: A) => void
     ): RBXScriptConnection {
         const bindableEvent = this.fetchEventWithDefinition(eventDefinition) as BindableEvent;
         return bindableEvent.Event.Connect(functionBinding);
     }
 
-    public getBindableEventFunction<A extends unknown[]>(eventDefinition: EventDefinition<A>): (...args: A) => void {
+    public getBindableEventFunction<A extends unknown[]>(eventDefinition: EventDefinition<A>): (...params: A) => void {
         const bindableEvent = this.fetchEventWithDefinition(eventDefinition) as BindableEvent;
-        return ((...args: A) => bindableEvent.Fire(...args)) as (...args: A) => void;
+        return ((...params: A) => bindableEvent.Fire(...params)) as (...params: A) => void;
     }
 
     protected fetchEventWithDefinition(eventDefinition: EventDefinition<unknown[]>): RemoteEvent | BindableEvent {

@@ -1,6 +1,6 @@
 import {
     CROCHET_FOLDER_NAME, CrochetCore, EventDefinition, FunctionDefinition, OnHeartbeat, OnInit,
-    OnStart
+    OnStart, UnknownFunction
 } from 'core';
 
 export abstract class Service {}
@@ -72,42 +72,44 @@ export class CrochetServerImplementation extends CrochetCore {
         return this.services.get(serviceKey) as InstanceType<S>;
     }
 
-    public registerRemoteFunction<A extends unknown[], R>(functionDefinition: FunctionDefinition<A, R>): void {
+    public registerRemoteFunction<F extends UnknownFunction>(functionDefinition: FunctionDefinition<F>): void {
         const name = functionDefinition.functionIdentifier;
         const remoteFunction = new Instance('RemoteFunction');
         remoteFunction.Name = name;
         remoteFunction.Parent = this.functionFolder;
     }
 
-    public bindServerSideRemoteFunction<A extends unknown[], R>(
-        functionDefinition: FunctionDefinition<A, R>,
-        functionBinding: (player: Player, ...args: A) => R
+    public bindServerSideRemoteFunction<F extends UnknownFunction>(
+        functionDefinition: FunctionDefinition<F>,
+        functionBinding: (player: Player, ...params: Parameters<F>) => ReturnType<F>
     ): void {
         const remoteFunction = this.fetchFunctionWithDefinition(functionDefinition) as RemoteFunction;
-        remoteFunction.OnServerInvoke = functionBinding as (player: Player, ...args: unknown[]) => unknown;
+        remoteFunction.OnServerInvoke = functionBinding as (player: Player, ...params: unknown[]) => unknown;
     }
 
     /**
-     *
-     * @param functionDefinition
+     * @deprecated Client Side RemoteFunctions are unsafe. (See https://developer.roblox.com/en-us/articles/Remote-Functions-and-Events#remote-function-warning)
      */
-    public getClientSideRemoteFunction<A extends unknown[], R>(
-        functionDefinition: FunctionDefinition<A, R>
-    ): (player: Player, ...args: A) => R {
+    public getClientSideRemoteFunction<F extends UnknownFunction>(
+        functionDefinition: FunctionDefinition<F>
+    ): (player: Player, ...params: Parameters<F>) => ReturnType<F> {
         const remoteFunction = this.fetchFunctionWithDefinition(functionDefinition) as RemoteFunction;
-        return ((player: Player, ...args: A) => remoteFunction.InvokeClient(player, ...args)) as (
+        return ((player: Player, ...params: Parameters<F>) => remoteFunction.InvokeClient(player, ...params)) as (
             player: Player,
-            ...args: A
-        ) => R;
+            ...params: Parameters<F>
+        ) => ReturnType<F>;
     }
 
-    public getClientSideRemotePromiseFunction<A extends unknown[], R>(
-        functionDefinition: FunctionDefinition<A, R>
-    ): (player: Player, ...args: A) => Promise<R> {
+    /**
+     * @deprecated Client Side RemoteFunctions are unsafe. (See https://developer.roblox.com/en-us/articles/Remote-Functions-and-Events#remote-function-warning)
+     */
+    public getClientSideRemotePromiseFunction<F extends UnknownFunction>(
+        functionDefinition: FunctionDefinition<F>
+    ): (player: Player, ...params: Parameters<F>) => Promise<ReturnType<F>> {
         const remoteFunction = this.fetchFunctionWithDefinition(functionDefinition) as RemoteFunction;
-        return (player: Player, ...args: unknown[]) => {
+        return (player: Player, ...params: unknown[]) => {
             return new Promise((resolve) =>
-                Promise.spawn(() => resolve(remoteFunction.InvokeClient(player, ...args) as R))
+                Promise.spawn(() => resolve(remoteFunction.InvokeClient(player, ...params) as ReturnType<F>))
             );
         };
     }
@@ -121,25 +123,25 @@ export class CrochetServerImplementation extends CrochetCore {
 
     public bindRemoteEvent<A extends unknown[]>(
         eventDefinition: EventDefinition<A>,
-        functionBinding: (player: Player, ...args: A) => void
+        functionBinding: (player: Player, ...params: A) => void
     ): RBXScriptConnection {
         const remoteEvent = this.fetchEventWithDefinition(eventDefinition) as RemoteEvent;
-        return remoteEvent.OnServerEvent.Connect(functionBinding as (player: Player, ...args: unknown[]) => void);
+        return remoteEvent.OnServerEvent.Connect(functionBinding as (player: Player, ...params: unknown[]) => void);
     }
 
     public getRemoteEventFunction<A extends unknown[]>(
         eventDefinition: EventDefinition<A>
-    ): (player: Player, ...args: A) => void {
+    ): (player: Player, ...params: A) => void {
         const remoteEvent = this.fetchEventWithDefinition(eventDefinition) as RemoteEvent;
-        return ((player: Player, ...args: A) => remoteEvent.FireClient(player, ...args)) as (
+        return ((player: Player, ...params: A) => remoteEvent.FireClient(player, ...params)) as (
             player: Player,
-            ...args: A
+            ...params: A
         ) => void;
     }
 
-    public getRemoteEventAllFunction<A extends unknown[]>(eventDefinition: EventDefinition<A>): (...args: A) => void {
+    public getRemoteEventAllFunction<A extends unknown[]>(eventDefinition: EventDefinition<A>): (...params: A) => void {
         const remoteEvent = this.fetchEventWithDefinition(eventDefinition) as RemoteEvent;
-        return ((...args: A) => remoteEvent.FireAllClients(...args)) as (...args: A) => void;
+        return ((...params: A) => remoteEvent.FireAllClients(...params)) as (...params: A) => void;
     }
 
     public start(): void {
