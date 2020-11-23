@@ -19,7 +19,7 @@
     "types": "out/index.d.ts",
     "devDependencies": {
         "@rbxts/compiler-types": "^1.0.0-beta.4.0",
-        "@rbxts/types": "^1.0.426"
+        "@rbxts/types": "^1.0.428"
     },
     "dependencies": {}
 }

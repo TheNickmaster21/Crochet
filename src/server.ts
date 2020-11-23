@@ -152,7 +152,7 @@ export class CrochetServerImplementation extends CrochetCore {
     /**
      * @deprecated Client Side RemoteFunctions are unsafe. (See https://developer.roblox.com/en-us/articles/Remote-Functions-and-Events#remote-function-warning)
      *
-     * Get a function that can be called on the server to invoke a RemoteEvent. Unlike getClientSideRemotePromiseFunction,
+     * Get a function that can be called on the server to invoke a RemoteFunction. Unlike getClientSideRemotePromiseFunction,
      * this method returns a function that yields the current thread until the function returns.
      *
      * @param functionDefinition The FunctionDefinition used to retreive and call the function
@@ -180,7 +180,7 @@ export class CrochetServerImplementation extends CrochetCore {
     /**
      * @deprecated Client Side RemoteFunctions are unsafe. (See https://developer.roblox.com/en-us/articles/Remote-Functions-and-Events#remote-function-warning)
      *
-     * Get a function that can be called on the server to invoke a RemoteEvent. Unlike getClientSideRemoteFunction,
+     * Get a function that can be called on the server to invoke a RemoteFunction. Unlike getClientSideRemoteFunction,
      * this method returns a function that returns a Promise.
      *
      * @param functionDefinition The FunctionDefinition used to retreive and call the function
