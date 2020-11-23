@@ -16,8 +16,8 @@ export class CrochetClientImplementation extends CrochetCore {
         super();
 
         this.CrochetFolder = script.Parent?.WaitForChild(CROCHET_FOLDER_NAME) as Folder;
-        this.functionFolder = this.CrochetFolder.WaitForChild('Functions') as Folder;
-        this.eventFolder = this.CrochetFolder.WaitForChild('Events') as Folder;
+        this.FunctionFolder = this.CrochetFolder.WaitForChild('Functions') as Folder;
+        this.EventFolder = this.CrochetFolder.WaitForChild('Events') as Folder;
     }
 
     /**
@@ -101,9 +101,22 @@ export class CrochetClientImplementation extends CrochetCore {
         return this.controllers.get(controllerKey) as InstanceType<S>;
     }
 
-    public getServerSideRemoteFunction<F extends UnknownFunction>(functionDefinition: FunctionDefinition<F>): F {
+    public getServerSideRemoteFunction<F extends UnknownFunction>(
+        functionDefinition: FunctionDefinition<F>
+    ): (...params: Parameters<F>) => ReturnType<F> {
         const remoteFunction = this.fetchFunctionWithDefinition(functionDefinition) as RemoteFunction;
-        return ((...params: Parameters<F>) => remoteFunction.InvokeServer(...params)) as F;
+        return (...params: Parameters<F>) => {
+            assert(
+                this.verifyFunctionParametersWithDefinition(params, functionDefinition),
+                `Parameters are wrong for the function ${functionDefinition.functionIdentifier}!`
+            );
+            const result = remoteFunction.InvokeServer(...params) as ReturnType<F>;
+            assert(
+                this.verifyFunctionReturnTypeWithDefinition(result, functionDefinition),
+                `Return type is wrong for the function ${functionDefinition.functionIdentifier}!`
+            );
+            return result;
+        };
     }
 
     public getServerSideRemotePromiseFunction<F extends UnknownFunction>(
@@ -111,8 +124,19 @@ export class CrochetClientImplementation extends CrochetCore {
     ): (...params: Parameters<F>) => Promise<ReturnType<F>> {
         const remoteFunction = this.fetchFunctionWithDefinition(functionDefinition) as RemoteFunction;
         return (...params: unknown[]) => {
+            assert(
+                this.verifyFunctionParametersWithDefinition(params, functionDefinition),
+                `Parameters are wrong for the function ${functionDefinition.functionIdentifier}!`
+            );
             return new Promise((resolve) =>
-                Promise.spawn(() => resolve(remoteFunction.InvokeServer(...params) as ReturnType<F>))
+                Promise.spawn(() => {
+                    const result = remoteFunction.InvokeServer(...params) as ReturnType<F>;
+                    assert(
+                        this.verifyFunctionReturnTypeWithDefinition(result, functionDefinition),
+                        `Return type is wrong for the function ${functionDefinition.functionIdentifier}!`
+                    );
+                    resolve(result);
+                })
             );
         };
     }
@@ -125,7 +149,18 @@ export class CrochetClientImplementation extends CrochetCore {
         functionBinding: F
     ): void {
         const remoteFunction = this.fetchFunctionWithDefinition(functionDefinition) as RemoteFunction;
-        remoteFunction.OnClientInvoke = functionBinding as F;
+        remoteFunction.OnClientInvoke = (...params: Parameters<F>) => {
+            assert(
+                this.verifyFunctionParametersWithDefinition(params, functionDefinition),
+                `Parameters are wrong for the function ${functionDefinition.functionIdentifier}!`
+            );
+            const result = functionBinding(...params) as ReturnType<F>;
+            assert(
+                this.verifyFunctionReturnTypeWithDefinition(result, functionDefinition),
+                `Return type is wrong for the function ${functionDefinition.functionIdentifier}!`
+            );
+            return result;
+        };
     }
 
     public bindRemoteEvent<A extends unknown[]>(
@@ -133,11 +168,23 @@ export class CrochetClientImplementation extends CrochetCore {
         functionBinding: (...params: A) => void
     ): RBXScriptConnection {
         const remoteEvent = this.fetchEventWithDefinition(eventDefinition) as RemoteEvent;
-        return remoteEvent.OnClientEvent.Connect(functionBinding as (...params: unknown[]) => void);
+        return remoteEvent.OnClientEvent.Connect((...params: A) => {
+            assert(
+                this.verifyEventParametersWithDefinition(params, eventDefinition),
+                `Parameters are wrong for the event ${eventDefinition.eventIdentifier}!`
+            );
+            functionBinding(...params);
+        });
     }
 
     public getRemoteEventFunction<A extends unknown[]>(eventDefinition: EventDefinition<A>): (...params: A) => void {
         const remoteEvent = this.fetchEventWithDefinition(eventDefinition) as RemoteEvent;
-        return ((...params: A) => remoteEvent.FireServer(...params)) as (...params: A) => void;
+        return ((...params: A) => {
+            assert(
+                this.verifyEventParametersWithDefinition(params, eventDefinition),
+                `Parameters are wrong for the event ${eventDefinition.eventIdentifier}!`
+            );
+            remoteEvent.FireServer(...params);
+        }) as (...params: A) => void;
     }
 }

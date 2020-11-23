@@ -21,11 +21,17 @@ export interface OnHeartbeat {
     onHeartbeat(step: number): void;
 }
 
+/** Base function type for RemoteFunctions and BindableFunctions. */
+export type UnknownFunction = (...params: never[]) => unknown;
+
 /** Type for functions that allow typechecking for functions and events. */
 export type TypeCheck<T> = (value: unknown) => value is T;
 
-/** Base function type for RemoteFunctions and BindableFunctions. */
-export type UnknownFunction = (...params: never[]) => unknown;
+/** Type for array of type checks for the parameters of a function. */
+export type ParameterChecks<F> = F extends (...args: infer P) => unknown ? { [K in keyof P]: TypeCheck<P[K]> } : never;
+
+/** Type for a type checks for the return type of a function. */
+export type ReturnCheck<F extends UnknownFunction> = TypeCheck<ReturnType<F>>;
 
 /** Function definitions are used to define functions that are bound to remote
  * functions and bindable functions. Function Definitions are used by the
@@ -39,10 +45,10 @@ export class FunctionDefinition<F extends UnknownFunction> {
     private static functionDefinitionNames = new Set<string>();
 
     constructor(
-        public functionIdentifier: string
-    ) // public parameterTypeGaurds?: { [K in keyof Parameters<F>]: (value: unknown) => value is Parameters<F>[K] },
-    // public returnTypeGuard?: TypeCheck<ReturnType<F>>
-    {
+        public functionIdentifier: string,
+        public parameterTypeguards?: ParameterChecks<F>,
+        public returnTypeGuard?: ReturnCheck<F>
+    ) {
         assert(
             !FunctionDefinition.functionDefinitionNames.has(functionIdentifier),
             `There is already a function defined with the identifier: ${functionIdentifier}`
@@ -62,9 +68,9 @@ export class EventDefinition<A extends unknown[]> {
     private static eventDefinitionNames = new Set<string>();
 
     constructor(
-        public eventIdentifier: string
-    ) // public parameterTypeGaurds?: { [K in keyof A]: (value: unknown) => value is A[K] }
-    {
+        public eventIdentifier: string,
+        public parameterTypeguards?: { [K in keyof A]: (value: unknown) => value is A[K] }
+    ) {
         assert(
             !EventDefinition.eventDefinitionNames.has(eventIdentifier),
             `There is already an event defined with the identifier: ${eventIdentifier}`
@@ -77,15 +83,26 @@ export const CROCHET_FOLDER_NAME = 'Crochet';
 
 export abstract class CrochetCore {
     protected CrochetFolder?: Folder;
-    protected functionFolder?: Folder;
-    protected eventFolder?: Folder;
+    protected FunctionFolder?: Folder;
+    protected EventFolder?: Folder;
+
+    protected functionParameterTypeGuards: Map<string, TypeCheck<unknown>[]> = new Map();
+    protected functionReturnTypeGuard: Map<string, TypeCheck<unknown>> = new Map();
+
+    protected eventParameterTypeGuards: Map<string, TypeCheck<unknown>[]> = new Map();
 
     public registerBindableFunction<F extends UnknownFunction>(functionDefinition: FunctionDefinition<F>): void {
         const name = functionDefinition.functionIdentifier;
-        assert(this.functionFolder?.FindFirstChild(name) === undefined, `Duplicate function for name ${name}!`);
+        assert(this.FunctionFolder?.FindFirstChild(name) === undefined, `Duplicate function for name ${name}!`);
         const bindableFunction = new Instance('BindableFunction');
         bindableFunction.Name = name;
-        bindableFunction.Parent = this.functionFolder;
+        bindableFunction.Parent = this.FunctionFolder;
+        if (functionDefinition.parameterTypeguards) {
+            this.functionParameterTypeGuards.set(name, functionDefinition.parameterTypeguards);
+        }
+        if (functionDefinition.returnTypeGuard) {
+            this.functionReturnTypeGuard.set(name, functionDefinition.returnTypeGuard);
+        }
     }
 
     public bindBindableFunction<F extends UnknownFunction>(
@@ -93,28 +110,87 @@ export abstract class CrochetCore {
         functionBinding: F
     ): void {
         const bindableFunction = this.fetchFunctionWithDefinition(functionDefinition) as BindableFunction;
-        bindableFunction.OnInvoke = functionBinding as F;
+        bindableFunction.OnInvoke = (...params: Parameters<F>) => {
+            assert(
+                this.verifyFunctionParametersWithDefinition(params, functionDefinition),
+                `Parameters are wrong for the function ${functionDefinition.functionIdentifier}!`
+            );
+            const result = functionBinding(...params) as ReturnType<F>;
+            assert(
+                this.verifyFunctionReturnTypeWithDefinition(result, functionDefinition),
+                `Return type is wrong for the function ${functionDefinition.functionIdentifier}!`
+            );
+            return result;
+        };
     }
 
-    public getBindableFunction<F extends UnknownFunction>(functionDefinition: FunctionDefinition<F>): F {
+    public getBindableFunction<F extends UnknownFunction>(
+        functionDefinition: FunctionDefinition<F>
+    ): (...params: Parameters<F>) => ReturnType<F> {
         const bindableFunction = this.fetchFunctionWithDefinition(functionDefinition) as BindableFunction;
-        return ((...params: Parameters<F>) => bindableFunction.Invoke(...params)) as F;
+        return (...params: Parameters<F>) => {
+            assert(
+                this.verifyFunctionParametersWithDefinition(params, functionDefinition),
+                `Parameters are wrong for the function ${functionDefinition.functionIdentifier}!`
+            );
+            const result = bindableFunction.Invoke(...params) as ReturnType<F>;
+            assert(
+                this.verifyFunctionReturnTypeWithDefinition(result, functionDefinition),
+                `Return type is wrong for the function ${functionDefinition.functionIdentifier}!`
+            );
+            return result;
+        };
     }
 
     protected fetchFunctionWithDefinition(
         functionDefinition: FunctionDefinition<UnknownFunction>
     ): RemoteFunction | BindableFunction {
         const name = functionDefinition.functionIdentifier;
-        const func = this.functionFolder?.FindFirstChild(name);
-        assert(func !== undefined, `Could not find function with identifier ${name}!`);
+        const func = this.FunctionFolder?.FindFirstChild(name);
+        assert(func, `Could not find function with identifier ${name}!`);
         return func as RemoteFunction | BindableFunction;
+    }
+
+    protected verifyFunctionParametersWithDefinition(
+        params: unknown[],
+        functionDefinition: FunctionDefinition<UnknownFunction>
+    ): boolean {
+        const name = functionDefinition.functionIdentifier;
+        const typeGuards = this.functionParameterTypeGuards.get(name);
+        if (typeGuards !== undefined) {
+            if (typeGuards.size() !== params.size()) {
+                return false;
+            }
+            for (let i = 0; i < typeGuards.size(); i++) {
+                const guard = typeGuards[i];
+                if (!guard(params[i])) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    protected verifyFunctionReturnTypeWithDefinition(
+        returnResult: unknown,
+        functionDefinition: FunctionDefinition<UnknownFunction>
+    ): boolean {
+        const name = functionDefinition.functionIdentifier;
+        const typeGuard = this.functionReturnTypeGuard.get(name);
+        if (typeGuard !== undefined) {
+            return typeGuard(returnResult);
+        }
+        return true;
     }
 
     public registerBindableEvent<A extends unknown[]>(eventDefinition: EventDefinition<A>): void {
         const name = eventDefinition.eventIdentifier;
         const bindableEvent = new Instance('BindableEvent');
         bindableEvent.Name = name;
-        bindableEvent.Parent = this.eventFolder;
+        bindableEvent.Parent = this.EventFolder;
+        if (eventDefinition.parameterTypeguards) {
+            this.eventParameterTypeGuards.set(name, eventDefinition.parameterTypeguards);
+        }
     }
 
     public bindBindableEvent<A extends unknown[]>(
@@ -122,18 +198,50 @@ export abstract class CrochetCore {
         functionBinding: (...params: A) => void
     ): RBXScriptConnection {
         const bindableEvent = this.fetchEventWithDefinition(eventDefinition) as BindableEvent;
-        return bindableEvent.Event.Connect(functionBinding);
+        return bindableEvent.Event.Connect((...params: A) => {
+            assert(
+                this.verifyEventParametersWithDefinition(params, eventDefinition),
+                `Parameters are wrong for the event ${eventDefinition.eventIdentifier}!`
+            );
+            functionBinding(...params);
+        });
     }
 
     public getBindableEventFunction<A extends unknown[]>(eventDefinition: EventDefinition<A>): (...params: A) => void {
         const bindableEvent = this.fetchEventWithDefinition(eventDefinition) as BindableEvent;
-        return ((...params: A) => bindableEvent.Fire(...params)) as (...params: A) => void;
+        return ((...params: A) => {
+            assert(
+                this.verifyEventParametersWithDefinition(params, eventDefinition),
+                `Parameters are wrong for the event ${eventDefinition.eventIdentifier}!`
+            );
+            bindableEvent.Fire(...params);
+        }) as (...params: A) => void;
     }
 
     protected fetchEventWithDefinition(eventDefinition: EventDefinition<unknown[]>): RemoteEvent | BindableEvent {
         const name = eventDefinition.eventIdentifier;
-        const event = this.eventFolder?.FindFirstChild(name);
-        assert(event !== undefined, `Could not find event with identifier ${name}!`);
+        const event = this.EventFolder?.FindFirstChild(name);
+        assert(event, `Could not find event with identifier ${name}!`);
         return event as RemoteEvent | BindableEvent;
+    }
+
+    protected verifyEventParametersWithDefinition(
+        params: unknown[],
+        eventDefinition: EventDefinition<unknown[]>
+    ): boolean {
+        const name = eventDefinition.eventIdentifier;
+        const typeGuards = this.eventParameterTypeGuards.get(name);
+        if (typeGuards !== undefined) {
+            if (typeGuards.size() !== params.size()) {
+                return false;
+            }
+            for (let i = 0; i < typeGuards.size(); i++) {
+                const guard = typeGuards[i];
+                if (!guard(params[i])) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }

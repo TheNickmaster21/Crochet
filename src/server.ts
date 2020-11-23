@@ -17,10 +17,10 @@ export class CrochetServerImplementation extends CrochetCore {
 
         this.CrochetFolder = new Instance('Folder');
         this.CrochetFolder.Name = CROCHET_FOLDER_NAME;
-        this.functionFolder = new Instance('Folder', this.CrochetFolder);
-        this.functionFolder.Name = 'Functions';
-        this.eventFolder = new Instance('Folder', this.CrochetFolder);
-        this.eventFolder.Name = 'Events';
+        this.FunctionFolder = new Instance('Folder', this.CrochetFolder);
+        this.FunctionFolder.Name = 'Functions';
+        this.EventFolder = new Instance('Folder', this.CrochetFolder);
+        this.EventFolder.Name = 'Events';
     }
 
     /**
@@ -76,7 +76,13 @@ export class CrochetServerImplementation extends CrochetCore {
         const name = functionDefinition.functionIdentifier;
         const remoteFunction = new Instance('RemoteFunction');
         remoteFunction.Name = name;
-        remoteFunction.Parent = this.functionFolder;
+        remoteFunction.Parent = this.FunctionFolder;
+        if (functionDefinition.parameterTypeguards) {
+            this.functionParameterTypeGuards.set(name, functionDefinition.parameterTypeguards);
+        }
+        if (functionDefinition.returnTypeGuard) {
+            this.functionReturnTypeGuard.set(name, functionDefinition.returnTypeGuard);
+        }
     }
 
     public bindServerSideRemoteFunction<F extends UnknownFunction>(
@@ -84,7 +90,18 @@ export class CrochetServerImplementation extends CrochetCore {
         functionBinding: (player: Player, ...params: Parameters<F>) => ReturnType<F>
     ): void {
         const remoteFunction = this.fetchFunctionWithDefinition(functionDefinition) as RemoteFunction;
-        remoteFunction.OnServerInvoke = functionBinding as (player: Player, ...params: unknown[]) => unknown;
+        remoteFunction.OnServerInvoke = ((player: Player, ...params: Parameters<F>) => {
+            assert(
+                this.verifyFunctionParametersWithDefinition(params, functionDefinition),
+                `Parameters are wrong for the function ${functionDefinition.functionIdentifier}!`
+            );
+            const result = functionBinding(player, ...params) as ReturnType<F>;
+            assert(
+                this.verifyFunctionReturnTypeWithDefinition(result, functionDefinition),
+                `Return type is wrong for the function ${functionDefinition.functionIdentifier}!`
+            );
+            return result;
+        }) as (player: Player, ...params: unknown[]) => unknown;
     }
 
     /**
@@ -94,10 +111,19 @@ export class CrochetServerImplementation extends CrochetCore {
         functionDefinition: FunctionDefinition<F>
     ): (player: Player, ...params: Parameters<F>) => ReturnType<F> {
         const remoteFunction = this.fetchFunctionWithDefinition(functionDefinition) as RemoteFunction;
-        return ((player: Player, ...params: Parameters<F>) => remoteFunction.InvokeClient(player, ...params)) as (
-            player: Player,
-            ...params: Parameters<F>
-        ) => ReturnType<F>;
+
+        return (player: Player, ...params: Parameters<F>) => {
+            assert(
+                this.verifyFunctionParametersWithDefinition(params, functionDefinition),
+                `Parameters are wrong for the function ${functionDefinition.functionIdentifier}!`
+            );
+            const result = remoteFunction.InvokeClient(player, ...params) as ReturnType<F>;
+            assert(
+                this.verifyFunctionReturnTypeWithDefinition(result, functionDefinition),
+                `Return type is wrong for the function ${functionDefinition.functionIdentifier}!`
+            );
+            return result;
+        };
     }
 
     /**
@@ -108,8 +134,19 @@ export class CrochetServerImplementation extends CrochetCore {
     ): (player: Player, ...params: Parameters<F>) => Promise<ReturnType<F>> {
         const remoteFunction = this.fetchFunctionWithDefinition(functionDefinition) as RemoteFunction;
         return (player: Player, ...params: unknown[]) => {
+            assert(
+                this.verifyFunctionParametersWithDefinition(params, functionDefinition),
+                `Parameters are wrong for the function ${functionDefinition.functionIdentifier}!`
+            );
             return new Promise((resolve) =>
-                Promise.spawn(() => resolve(remoteFunction.InvokeClient(player, ...params) as ReturnType<F>))
+                Promise.spawn(() => {
+                    const result = remoteFunction.InvokeClient(player, ...params) as ReturnType<F>;
+                    assert(
+                        this.verifyFunctionReturnTypeWithDefinition(result, functionDefinition),
+                        `Return type is wrong for the function ${functionDefinition.functionIdentifier}!`
+                    );
+                    resolve(result);
+                })
             );
         };
     }
@@ -118,7 +155,10 @@ export class CrochetServerImplementation extends CrochetCore {
         const name = eventDefinition.eventIdentifier;
         const remoteEvent = new Instance('RemoteEvent');
         remoteEvent.Name = name;
-        remoteEvent.Parent = this.eventFolder;
+        remoteEvent.Parent = this.EventFolder;
+        if (eventDefinition.parameterTypeguards) {
+            this.eventParameterTypeGuards.set(name, eventDefinition.parameterTypeguards);
+        }
     }
 
     public bindRemoteEvent<A extends unknown[]>(
@@ -126,22 +166,37 @@ export class CrochetServerImplementation extends CrochetCore {
         functionBinding: (player: Player, ...params: A) => void
     ): RBXScriptConnection {
         const remoteEvent = this.fetchEventWithDefinition(eventDefinition) as RemoteEvent;
-        return remoteEvent.OnServerEvent.Connect(functionBinding as (player: Player, ...params: unknown[]) => void);
+        return remoteEvent.OnServerEvent.Connect(((player: Player, ...params: A) => {
+            assert(
+                this.verifyEventParametersWithDefinition(params, eventDefinition),
+                `Parameters are wrong for the event ${eventDefinition.eventIdentifier}!`
+            );
+            functionBinding(player, ...params);
+        }) as (player: Player, ...params: unknown[]) => void);
     }
 
     public getRemoteEventFunction<A extends unknown[]>(
         eventDefinition: EventDefinition<A>
     ): (player: Player, ...params: A) => void {
         const remoteEvent = this.fetchEventWithDefinition(eventDefinition) as RemoteEvent;
-        return ((player: Player, ...params: A) => remoteEvent.FireClient(player, ...params)) as (
-            player: Player,
-            ...params: A
-        ) => void;
+        return ((player: Player, ...params: A) => {
+            assert(
+                this.verifyEventParametersWithDefinition(params, eventDefinition),
+                `Parameters are wrong for the event ${eventDefinition.eventIdentifier}!`
+            );
+            remoteEvent.FireClient(player, ...params);
+        }) as (player: Player, ...params: A) => void;
     }
 
     public getRemoteEventAllFunction<A extends unknown[]>(eventDefinition: EventDefinition<A>): (...params: A) => void {
         const remoteEvent = this.fetchEventWithDefinition(eventDefinition) as RemoteEvent;
-        return ((...params: A) => remoteEvent.FireAllClients(...params)) as (...params: A) => void;
+        return ((...params: A) => {
+            assert(
+                this.verifyEventParametersWithDefinition(params, eventDefinition),
+                `Parameters are wrong for the event ${eventDefinition.eventIdentifier}!`
+            );
+            remoteEvent.FireAllClients(...params);
+        }) as (...params: A) => void;
     }
 
     public start(): void {
