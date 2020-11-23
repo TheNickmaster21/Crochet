@@ -221,6 +221,7 @@ export abstract class CrochetCore {
      * Bind a function to be called whenever the BindableEvent is fired
      *
      * @param eventDefinition The EventDefinition used to retreive and call the event
+     * @param functionBinding The function that is called whenever the BindableEvent is fired
      * @returns A RBXScriptConnection for the .Event connection
      */
     public bindBindableEvent<A extends unknown[]>(

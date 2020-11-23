@@ -3,10 +3,19 @@ import {
     OnStart, UnknownFunction
 } from 'core';
 
+/**
+ * The abstract base class that all controllers must extend.
+ */
 export abstract class Controller {}
 
+/**
+ * The type definition for constructors of Controllers.
+ */
 type ControllerConstructor = new () => Controller;
 
+/**
+ * CrochetServerImplementation is the Crochet class for use in Server Scripts.
+ */
 export class CrochetClientImplementation extends CrochetCore {
     private controllers = new Map<string, Controller>();
 
@@ -69,7 +78,7 @@ export class CrochetClientImplementation extends CrochetCore {
      * @throws Controllers can only be registered once
      *
      * @example CrochetClient.registerController(MyController);
-     *  */
+     F*/
     public registerController(controllerConstructor: ControllerConstructor): void {
         assert(
             this.startPromise === undefined,
@@ -93,7 +102,7 @@ export class CrochetClientImplementation extends CrochetCore {
      * @return A singleton implementation of the give controllerConstructor
      * @throws The given controllerConstructor must have been registered before this method is called!
      *
-     * e.g. CrochetClient.getController(MyController); // Returns MyController instance
+     * @example CrochetClient.getController(MyController); // Returns MyController instance
      */
     public getController<S extends ControllerConstructor>(controllerConstructor: S): InstanceType<S> {
         const controllerKey = tostring(controllerConstructor);
@@ -101,6 +110,13 @@ export class CrochetClientImplementation extends CrochetCore {
         return this.controllers.get(controllerKey) as InstanceType<S>;
     }
 
+    /**
+     * Get a function that can be called on the client to invoke a RemoteEvent. Unlike getServerSideRemotePromiseFunction,
+     * this method returns a function that yields the current thread until the function returns.
+     *
+     * @param functionDefinition The FunctionDefinition used to retreive and call the function
+     * @returns A function that invokes the RemoteFunction
+     */
     public getServerSideRemoteFunction<F extends UnknownFunction>(
         functionDefinition: FunctionDefinition<F>
     ): (...params: Parameters<F>) => ReturnType<F> {
@@ -119,6 +135,13 @@ export class CrochetClientImplementation extends CrochetCore {
         };
     }
 
+    /**
+     * Get a function that can be called on the server to invoke a RemoteFunction. Unlike getServerSideRemoteFunction,
+     * this method returns a function that returns a Promise.
+     *
+     * @param functionDefinition The FunctionDefinition used to retreive and call the function
+     * @returns A function that invokes the RemoteFunction
+     */
     public getServerSideRemotePromiseFunction<F extends UnknownFunction>(
         functionDefinition: FunctionDefinition<F>
     ): (...params: Parameters<F>) => Promise<ReturnType<F>> {
@@ -143,6 +166,11 @@ export class CrochetClientImplementation extends CrochetCore {
 
     /**
      * @deprecated Client Side RemoteFunctions are unsafe. (See https://developer.roblox.com/en-us/articles/Remote-Functions-and-Events#remote-function-warning)
+     *
+     * Bind a function to be called whenever a RemoteFunction is invoked by the server.
+     *
+     * @param functionDefinition The FunctionDefinition used to retreive and call the function
+     * @param functionBinding The function to bind to the RemoteFunction.
      */
     public bindClientSideRemoteFunction<F extends UnknownFunction>(
         functionDefinition: FunctionDefinition<F>,
@@ -163,6 +191,13 @@ export class CrochetClientImplementation extends CrochetCore {
         };
     }
 
+    /**
+     * Bind a function to be called whenever the BindableEvent is fired by the server.
+     *
+     * @param eventDefinition The EventDefinition used to retreive and call the event
+     * @param functionBinding The function that is called whenever the RemoteEvent is fired
+     * @returns A RBXScriptConnection for the .Event connection
+     */
     public bindRemoteEvent<A extends unknown[]>(
         eventDefinition: EventDefinition<A>,
         functionBinding: (...params: A) => void
@@ -177,6 +212,14 @@ export class CrochetClientImplementation extends CrochetCore {
         });
     }
 
+    /**
+     * Get a function that fires the RemoteEvent for the server.
+     *
+     * @param eventDefinition The EventDefinition used to retreive and call the event
+     * @returns A function that can be invoked to fire the RemoteEvent.
+     *
+     * @example Crochet.getRemoteEventFunction(new EventDefinition<[boolean]>('MyEvent'))(false);
+     */
     public getRemoteEventFunction<A extends unknown[]>(eventDefinition: EventDefinition<A>): (...params: A) => void {
         const remoteEvent = this.fetchEventWithDefinition(eventDefinition) as RemoteEvent;
         return ((...params: A) => {

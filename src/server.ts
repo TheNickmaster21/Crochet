@@ -3,8 +3,14 @@ import {
     OnStart, UnknownFunction
 } from 'core';
 
+/**
+ * The abstract base class that all services must extend.
+ */
 export abstract class Service {}
 
+/**
+ * The type definition for constructors of Services.
+ */
 type ServiceConstructor = new () => Service;
 
 /**
