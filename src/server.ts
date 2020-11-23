@@ -7,6 +7,9 @@ export abstract class Service {}
 
 type ServiceConstructor = new () => Service;
 
+/**
+ * CrochetServerImplementation is the Crochet class for use in Server Scripts.
+ */
 export class CrochetServerImplementation extends CrochetCore {
     private services = new Map<string, Service>();
 
@@ -21,6 +24,31 @@ export class CrochetServerImplementation extends CrochetCore {
         this.FunctionFolder.Name = 'Functions';
         this.EventFolder = new Instance('Folder', this.CrochetFolder);
         this.EventFolder.Name = 'Events';
+    }
+
+    /**
+     * Call this method to start the Crochet framework. This method must be called after all Services
+     * have been registered. After start() is called, the onStart() method is called on all services,
+     * onHeartbeat() starts being called on services, and CrochetClient's start() will be able to resolve.
+     */
+    public start(): void {
+        assert(!this.starting, 'start() has already been called!');
+        this.starting = true;
+
+        this.CrochetFolder!.Parent = script.Parent;
+
+        this.services.values().forEach((service) => {
+            if ('onStart' in service) {
+                (service as OnStart).onStart();
+            }
+            if ('onHeartbeat' in service) {
+                game.GetService('RunService').Heartbeat.Connect((step) => (service as OnHeartbeat).onHeartbeat(step));
+            }
+        });
+
+        const setup = new Instance('BoolValue');
+        setup.Name = 'Started';
+        setup.Parent = script.Parent;
     }
 
     /**
@@ -72,6 +100,11 @@ export class CrochetServerImplementation extends CrochetCore {
         return this.services.get(serviceKey) as InstanceType<S>;
     }
 
+    /**
+     * Register a RemoteFunction so that it can be used later.
+     *
+     * @param functionDefinition The FunctionDefinition used to retreive and call the function
+     */
     public registerRemoteFunction<F extends UnknownFunction>(functionDefinition: FunctionDefinition<F>): void {
         const name = functionDefinition.functionIdentifier;
         const remoteFunction = new Instance('RemoteFunction');
@@ -85,6 +118,12 @@ export class CrochetServerImplementation extends CrochetCore {
         }
     }
 
+    /**
+     * Bind a function to be called whenever a RemoteFunction is invoked by the client.
+     *
+     * @param functionDefinition The FunctionDefinition used to retreive and call the function
+     * @param functionBinding The function to bind to the RemoteFunction.
+     */
     public bindServerSideRemoteFunction<F extends UnknownFunction>(
         functionDefinition: FunctionDefinition<F>,
         functionBinding: (player: Player, ...params: Parameters<F>) => ReturnType<F>
@@ -106,6 +145,12 @@ export class CrochetServerImplementation extends CrochetCore {
 
     /**
      * @deprecated Client Side RemoteFunctions are unsafe. (See https://developer.roblox.com/en-us/articles/Remote-Functions-and-Events#remote-function-warning)
+     *
+     * Get a function that can be called on the server to invoke a RemoteEvent. Unlike getClientSideRemotePromiseFunction,
+     * this method returns a function that yields the current thread until the function returns.
+     *
+     * @param functionDefinition The FunctionDefinition used to retreive and call the function
+     * @returns A function that invokes the RemoteFunction
      */
     public getClientSideRemoteFunction<F extends UnknownFunction>(
         functionDefinition: FunctionDefinition<F>
@@ -128,6 +173,12 @@ export class CrochetServerImplementation extends CrochetCore {
 
     /**
      * @deprecated Client Side RemoteFunctions are unsafe. (See https://developer.roblox.com/en-us/articles/Remote-Functions-and-Events#remote-function-warning)
+     *
+     * Get a function that can be called on the server to invoke a RemoteEvent. Unlike getClientSideRemoteFunction,
+     * this method returns a function that returns a Promise.
+     *
+     * @param functionDefinition The FunctionDefinition used to retreive and call the function
+     * @returns A function that invokes the RemoteFunction
      */
     public getClientSideRemotePromiseFunction<F extends UnknownFunction>(
         functionDefinition: FunctionDefinition<F>
@@ -151,6 +202,11 @@ export class CrochetServerImplementation extends CrochetCore {
         };
     }
 
+    /**
+     * Register a RemoteEvent so that it can be used later.
+     *
+     * @param eventDefinition The EventDefinition used to retreive and call the event
+     */
     public registerRemoteEvent<A extends unknown[]>(eventDefinition: EventDefinition<A>): void {
         const name = eventDefinition.eventIdentifier;
         const remoteEvent = new Instance('RemoteEvent');
@@ -161,6 +217,13 @@ export class CrochetServerImplementation extends CrochetCore {
         }
     }
 
+    /**
+     * Bind a function to be called whenever the BindableEvent is fired by a client.
+     *
+     * @param eventDefinition The EventDefinition used to retreive and call the event
+     * @param functionBinding The function that is called whenever the RemoteEvent is fired
+     * @returns A RBXScriptConnection for the .Event connection
+     */
     public bindRemoteEvent<A extends unknown[]>(
         eventDefinition: EventDefinition<A>,
         functionBinding: (player: Player, ...params: A) => void
@@ -175,6 +238,14 @@ export class CrochetServerImplementation extends CrochetCore {
         }) as (player: Player, ...params: unknown[]) => void);
     }
 
+    /**
+     * Get a function that fires the RemoteEvent for a specific player.
+     *
+     * @param eventDefinition The EventDefinition used to retreive and call the event
+     * @returns A function that can be invoked to fire the RemoteEvent for a specific player.
+     *
+     * @example Crochet.getRemoteEventFunction(new EventDefinition<[boolean]>('MyEvent'))(TheNickmaster21, false);
+     */
     public getRemoteEventFunction<A extends unknown[]>(
         eventDefinition: EventDefinition<A>
     ): (player: Player, ...params: A) => void {
@@ -188,6 +259,14 @@ export class CrochetServerImplementation extends CrochetCore {
         }) as (player: Player, ...params: A) => void;
     }
 
+    /**
+     * Get a function that fires the RemoteEvent for all players.
+     *
+     * @param eventDefinition The EventDefinition used to retreive and call the event
+     * @returns A function that can be invoked to fire the RemoteEvent for all players.
+     *
+     * @example Crochet.getRemoteEventAllFunction(new EventDefinition<[boolean]>('MyEvent'))(false);
+     */
     public getRemoteEventAllFunction<A extends unknown[]>(eventDefinition: EventDefinition<A>): (...params: A) => void {
         const remoteEvent = this.fetchEventWithDefinition(eventDefinition) as RemoteEvent;
         return ((...params: A) => {
@@ -197,25 +276,5 @@ export class CrochetServerImplementation extends CrochetCore {
             );
             remoteEvent.FireAllClients(...params);
         }) as (...params: A) => void;
-    }
-
-    public start(): void {
-        assert(!this.starting, 'start() has already been called!');
-        this.starting = true;
-
-        this.CrochetFolder!.Parent = script.Parent;
-
-        this.services.values().forEach((service) => {
-            if ('onStart' in service) {
-                (service as OnStart).onStart();
-            }
-            if ('onHeartbeat' in service) {
-                game.GetService('RunService').Heartbeat.Connect((step) => (service as OnHeartbeat).onHeartbeat(step));
-            }
-        });
-
-        const setup = new Instance('BoolValue');
-        setup.Name = 'Started';
-        setup.Parent = script.Parent;
     }
 }

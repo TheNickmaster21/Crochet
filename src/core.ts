@@ -91,6 +91,11 @@ export abstract class CrochetCore {
 
     protected eventParameterTypeGuards: Map<string, TypeCheck<unknown>[]> = new Map();
 
+    /**
+     * Register a BindableFunction so that it can be used later.
+     *
+     * @param functionDefinition The FunctionDefinition used to retreive and call the function
+     */
     public registerBindableFunction<F extends UnknownFunction>(functionDefinition: FunctionDefinition<F>): void {
         const name = functionDefinition.functionIdentifier;
         assert(this.FunctionFolder?.FindFirstChild(name) === undefined, `Duplicate function for name ${name}!`);
@@ -105,6 +110,12 @@ export abstract class CrochetCore {
         }
     }
 
+    /**
+     * Bind a function to be called whenever a BindableFunction is invoked.
+     *
+     * @param functionDefinition The FunctionDefinition used to retreive and call the function
+     * @param functionBinding The function to bind to the BindableFunction.
+     */
     public bindBindableFunction<F extends UnknownFunction>(
         functionDefinition: FunctionDefinition<F>,
         functionBinding: F
@@ -124,6 +135,14 @@ export abstract class CrochetCore {
         };
     }
 
+    /**
+     * Get a function that can be called to invoke a BindableFunction.
+     *
+     * @param functionDefinition The FunctionDefinition used to retreive and call the function
+     * @returns A function that invokes the BindableFunction
+     *
+     * @example Crochet.getBindableFunction(new FunctionDefinition<[string, number], boolean>('MyFunction'))('a', 1)
+     */
     public getBindableFunction<F extends UnknownFunction>(
         functionDefinition: FunctionDefinition<F>
     ): (...params: Parameters<F>) => ReturnType<F> {
@@ -183,6 +202,11 @@ export abstract class CrochetCore {
         return true;
     }
 
+    /**
+     * Register a BindableFunction so that it can be used later.
+     *
+     * @param eventDefinition The EventDefinition used to retreive and call the event
+     */
     public registerBindableEvent<A extends unknown[]>(eventDefinition: EventDefinition<A>): void {
         const name = eventDefinition.eventIdentifier;
         const bindableEvent = new Instance('BindableEvent');
@@ -193,6 +217,12 @@ export abstract class CrochetCore {
         }
     }
 
+    /**
+     * Bind a function to be called whenever the BindableEvent is fired
+     *
+     * @param eventDefinition The EventDefinition used to retreive and call the event
+     * @returns A RBXScriptConnection for the .Event connection
+     */
     public bindBindableEvent<A extends unknown[]>(
         eventDefinition: EventDefinition<A>,
         functionBinding: (...params: A) => void
@@ -207,6 +237,14 @@ export abstract class CrochetCore {
         });
     }
 
+    /**
+     * Get a function that fires the BindableEvent.
+     *
+     * @param eventDefinition The EventDefinition used to retreive and call the event
+     * @returns A function that can be invoked to fire the BindableEvent.
+     *
+     * @example Crochet.getBindableEventFunction(new EventDefinition<[boolean]>('MyEvent'))(false);
+     */
     public getBindableEventFunction<A extends unknown[]>(eventDefinition: EventDefinition<A>): (...params: A) => void {
         const bindableEvent = this.fetchEventWithDefinition(eventDefinition) as BindableEvent;
         return ((...params: A) => {
