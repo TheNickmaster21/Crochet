@@ -3,6 +3,8 @@ import {
     OnStart, UnknownFunction
 } from 'core';
 
+import Object from '@rbxts/object-utils';
+
 /**
  * The abstract base class that all controllers must extend.
  */
@@ -38,9 +40,9 @@ export class CrochetClientImplementation extends CrochetCore {
     public async start(): Promise<void> {
         if (this.startPromise === undefined) {
             this.startPromise = new Promise<void>((resolve) => {
-                Promise.spawn(() => {
+                Promise.defer(() => {
                     script.Parent?.WaitForChild('Started');
-                    this.controllers.values().forEach((controller) => {
+                    Object.values(this.controllers).forEach((controller) => {
                         if ('onStart' in controller) {
                             (controller as OnStart).onStart();
                         }
@@ -152,7 +154,7 @@ export class CrochetClientImplementation extends CrochetCore {
                 `Parameters are wrong for the function ${functionDefinition.functionIdentifier}!`
             );
             return new Promise((resolve) =>
-                Promise.spawn(() => {
+                Promise.defer(() => {
                     const result = remoteFunction.InvokeServer(...params) as ReturnType<F>;
                     assert(
                         this.verifyFunctionReturnTypeWithDefinition(result, functionDefinition),

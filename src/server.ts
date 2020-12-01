@@ -3,6 +3,8 @@ import {
     OnStart, UnknownFunction
 } from 'core';
 
+import Object from '@rbxts/object-utils';
+
 /**
  * The abstract base class that all services must extend.
  */
@@ -43,7 +45,7 @@ export class CrochetServerImplementation extends CrochetCore {
 
         this.CrochetFolder!.Parent = script.Parent;
 
-        this.services.values().forEach((service) => {
+        Object.values(this.services).forEach((service) => {
             if ('onStart' in service) {
                 (service as OnStart).onStart();
             }
@@ -196,7 +198,7 @@ export class CrochetServerImplementation extends CrochetCore {
                 `Parameters are wrong for the function ${functionDefinition.functionIdentifier}!`
             );
             return new Promise((resolve) =>
-                Promise.spawn(() => {
+                Promise.defer(() => {
                     const result = remoteFunction.InvokeClient(player, ...params) as ReturnType<F>;
                     assert(
                         this.verifyFunctionReturnTypeWithDefinition(result, functionDefinition),

@@ -1,6 +1,6 @@
 {
     "name": "@rbxts/crochet",
-    "version": "1.0.0-beta.0.0",
+    "version": "1.0.0-beta.0.1",
     "description": "Crochet is a framework for Roblox games written for use with roblox-ts",
     "repository": {
         "type": "git",
@@ -18,8 +18,10 @@
     "main": "out/init.lua",
     "types": "out/index.d.ts",
     "devDependencies": {
-        "@rbxts/compiler-types": "^1.0.0-beta.4.0",
+        "@rbxts/compiler-types": "^1.0.0-beta.6.2",
         "@rbxts/types": "^1.0.428"
     },
-    "dependencies": {}
+    "dependencies": {
+        "@rbxts/object-utils": "^1.0.4"
+    }
 }
