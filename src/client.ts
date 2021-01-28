@@ -1,6 +1,12 @@
 import {
-    CROCHET_FOLDER_NAME, CrochetCore, EventDefinition, FunctionDefinition, OnHeartbeat, OnInit,
-    OnStart, UnknownFunction
+    CROCHET_FOLDER_NAME,
+    CrochetCore,
+    EventDefinition,
+    FunctionDefinition,
+    OnHeartbeat,
+    OnInit,
+    OnStart,
+    UnknownFunction
 } from 'core';
 
 import Object from '@rbxts/object-utils';

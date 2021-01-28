@@ -1,6 +1,12 @@
 import {
-    CROCHET_FOLDER_NAME, CrochetCore, EventDefinition, FunctionDefinition, OnHeartbeat, OnInit,
-    OnStart, UnknownFunction
+    CROCHET_FOLDER_NAME,
+    CrochetCore,
+    EventDefinition,
+    FunctionDefinition,
+    OnHeartbeat,
+    OnInit,
+    OnStart,
+    UnknownFunction
 } from 'core';
 
 import Object from '@rbxts/object-utils';
@@ -21,7 +27,7 @@ type ServiceConstructor = new () => Service;
 export class CrochetServerImplementation extends CrochetCore {
     private services = new Map<string, Service>();
 
-    private starting: boolean = false;
+    private starting = false;
 
     public constructor() {
         super();
@@ -121,7 +127,7 @@ export class CrochetServerImplementation extends CrochetCore {
         if (functionDefinition.parameterTypeguards) {
             this.functionParameterTypeGuards.set(name, functionDefinition.parameterTypeguards);
         }
-        if (functionDefinition.returnTypeGuard) {
+        if (functionDefinition.returnTypeGuard !== undefined) {
             this.functionReturnTypeGuard.set(name, functionDefinition.returnTypeGuard);
         }
     }

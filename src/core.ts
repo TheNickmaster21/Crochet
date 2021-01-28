@@ -105,7 +105,7 @@ export abstract class CrochetCore {
         if (functionDefinition.parameterTypeguards) {
             this.functionParameterTypeGuards.set(name, functionDefinition.parameterTypeguards);
         }
-        if (functionDefinition.returnTypeGuard) {
+        if (functionDefinition.returnTypeGuard !== undefined) {
             this.functionReturnTypeGuard.set(name, functionDefinition.returnTypeGuard);
         }
     }
