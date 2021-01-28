@@ -32,5 +32,7 @@
     "dependencies": {
         "@rbxts/object-utils": "^1.0.4"
     },
-    "scripts": {}
+    "scripts": {
+        "prepack": "rbxtsc"
+    }
 }
