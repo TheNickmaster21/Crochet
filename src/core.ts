@@ -79,6 +79,10 @@ export class EventDefinition<A extends unknown[]> {
     }
 }
 
+export class Attribute<T> {
+    constructor(public name: string, public typeCheck?: TypeCheck<T>) {}
+}
+
 export const CROCHET_FOLDER_NAME = 'Crochet';
 
 export abstract class CrochetCore {
@@ -255,6 +259,76 @@ export abstract class CrochetCore {
             );
             bindableEvent.Fire(...params);
         }) as (...params: A) => void;
+    }
+
+    /**
+     * Safely returns an attribute from a Roblox instance.
+     * @experimental
+     *
+     * @param instance Roblox instance to get the attribute from
+     * @param attribute Attribute object for the attribute to get
+     */
+    public getAttribute<T>(instance: Instance, attribute: Attribute<T>): T | undefined;
+    /**
+     * Safely returns an attribute from a Roblox instance.
+     * @experimental
+     *
+     * @param instance Roblox instance to get the attribute from
+     * @param attribute Name of the attribute to get
+     * @param typeCheck Optional TypeCheck for the resulting attribute
+     */
+    public getAttribute<T>(instance: Instance, attribute: string, typeCheck?: TypeCheck<T>): T | undefined;
+    public getAttribute<T>(
+        instance: Instance,
+        attribute: Attribute<T> | string,
+        typeCheck?: TypeCheck<T>
+    ): T | undefined {
+        const attributeName = typeIs(attribute, 'string') ? attribute : (attribute as Attribute<T>).name;
+        const attributeValue = instance.GetAttribute(attributeName);
+        const typeCheckFunction = typeIs(attribute, 'string') ? typeCheck : (attribute as Attribute<T>).typeCheck;
+        if (typeCheckFunction !== undefined) {
+            if (attributeValue === undefined || typeCheckFunction(attributeValue)) {
+                return attributeValue;
+            } else {
+                throw `Attribute ${attribute} is the wrong type: ${typeOf(attributeValue)}!`;
+            }
+        }
+
+        return attributeValue as T | undefined;
+    }
+
+    /**
+     * Safely sets an attribute on a Roblox instance.
+     * @experimental
+     *
+     * @param instance Roblox instance to set the attribute on
+     * @param attribute Attribute object for the attribute to set
+     * @param value Value to set the attribute propery as
+     */
+    public setAttribute<T>(instance: Instance, attribute: Attribute<T>, value: T | undefined): void;
+    /**
+     * Safely sets an attribute on a Roblox instance.
+     * @experimental
+     *
+     * @param instance Roblox instance to set the attribute on
+     * @param attribute Name of the attribute to set
+     * @param value Value to set the attribute propery as
+     * @param typeCheck Optional TypeCheck for the attribute
+     */
+    public setAttribute<T>(instance: Instance, attribute: string, value: T | undefined, typeCheck?: TypeCheck<T>): void;
+    public setAttribute<T>(
+        instance: Instance,
+        attribute: Attribute<T> | string,
+        value: T | undefined,
+        typeCheck?: TypeCheck<T>
+    ): void {
+        const attributeName = typeIs(attribute, 'string') ? attribute : (attribute as Attribute<T>).name;
+        const typeCheckFunction = typeIs(attribute, 'string') ? typeCheck : (attribute as Attribute<T>).typeCheck;
+        if (typeCheckFunction !== undefined && value !== undefined && !typeCheckFunction(value)) {
+            throw `Attribute ${attribute} is the wrong type: ${typeOf(value)}!`;
+        }
+
+        instance.SetAttribute(attributeName, value);
     }
 
     protected fetchEventWithDefinition(eventDefinition: EventDefinition<unknown[]>): RemoteEvent | BindableEvent {
