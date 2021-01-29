@@ -3,7 +3,7 @@ import { CrochetServerImplementation } from 'server';
 
 export { Controller } from 'client';
 export { Service } from 'server';
-export { OnInit, OnStart, OnHeartbeat, EventDefinition, FunctionDefinition } from 'core';
+export { OnInit, OnStart, OnHeartbeat, EventDefinition, FunctionDefinition, AttributeDefinition } from 'core';
 
 const RunService = game.GetService('RunService');
 

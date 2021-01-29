@@ -90,9 +90,9 @@ export class EventDefinition<A extends unknown[]> {
  * safety when getting and saving attributes.
  *
  * @example // A string attribute called 'SecondName' using `@rbxts/t`
- * new Attribute('SecondName', t.string);
+ * new AttributeDefinition('SecondName', t.string);
  */
-export class Attribute<T> {
+export class AttributeDefinition<T> {
     constructor(public name: string, public typeCheck?: TypeCheck<T>) {}
 }
 
@@ -262,7 +262,7 @@ export abstract class CrochetCore {
      * @param eventDefinition The EventDefinition used to retreive and call the event
      * @returns A function that can be invoked to fire the BindableEvent.
      *
-     * @example 
+     * @example
      * Crochet.getBindableEventFunction(new EventDefinition<[boolean]>('MyEvent'))(false);
      */
     public getBindableEventFunction<A extends unknown[]>(eventDefinition: EventDefinition<A>): (...params: A) => void {
@@ -283,7 +283,7 @@ export abstract class CrochetCore {
      * @param instance Roblox instance to get the attribute from
      * @param attribute Attribute object for the attribute to get
      */
-    public getAttribute<T>(instance: Instance, attribute: Attribute<T>): T | undefined;
+    public getAttribute<T>(instance: Instance, attribute: AttributeDefinition<T>): T | undefined;
     /**
      * Safely returns an attribute from a Roblox instance.
      * @experimental Relies on a Beta Roblox Feature!
@@ -295,12 +295,14 @@ export abstract class CrochetCore {
     public getAttribute<T>(instance: Instance, attribute: string, typeCheck?: TypeCheck<T>): T | undefined;
     public getAttribute<T>(
         instance: Instance,
-        attribute: Attribute<T> | string,
+        attribute: AttributeDefinition<T> | string,
         typeCheck?: TypeCheck<T>
     ): T | undefined {
-        const attributeName = typeIs(attribute, 'string') ? attribute : (attribute as Attribute<T>).name;
+        const attributeName = typeIs(attribute, 'string') ? attribute : (attribute as AttributeDefinition<T>).name;
         const attributeValue = instance.GetAttribute(attributeName);
-        const typeCheckFunction = typeIs(attribute, 'string') ? typeCheck : (attribute as Attribute<T>).typeCheck;
+        const typeCheckFunction = typeIs(attribute, 'string')
+            ? typeCheck
+            : (attribute as AttributeDefinition<T>).typeCheck;
         if (typeCheckFunction !== undefined) {
             if (attributeValue === undefined || typeCheckFunction(attributeValue)) {
                 return attributeValue;
@@ -320,7 +322,7 @@ export abstract class CrochetCore {
      * @param attribute Attribute object for the attribute to set
      * @param value Value to set the attribute propery as
      */
-    public setAttribute<T>(instance: Instance, attribute: Attribute<T>, value: T | undefined): void;
+    public setAttribute<T>(instance: Instance, attribute: AttributeDefinition<T>, value: T | undefined): void;
     /**
      * Safely sets an attribute on a Roblox instance.
      * @experimental Relies on a Beta Roblox Feature!
@@ -333,12 +335,14 @@ export abstract class CrochetCore {
     public setAttribute<T>(instance: Instance, attribute: string, value: T | undefined, typeCheck?: TypeCheck<T>): void;
     public setAttribute<T>(
         instance: Instance,
-        attribute: Attribute<T> | string,
+        attribute: AttributeDefinition<T> | string,
         value: T | undefined,
         typeCheck?: TypeCheck<T>
     ): void {
-        const attributeName = typeIs(attribute, 'string') ? attribute : (attribute as Attribute<T>).name;
-        const typeCheckFunction = typeIs(attribute, 'string') ? typeCheck : (attribute as Attribute<T>).typeCheck;
+        const attributeName = typeIs(attribute, 'string') ? attribute : (attribute as AttributeDefinition<T>).name;
+        const typeCheckFunction = typeIs(attribute, 'string')
+            ? typeCheck
+            : (attribute as AttributeDefinition<T>).typeCheck;
         if (typeCheckFunction !== undefined && value !== undefined && !typeCheckFunction(value)) {
             throw `Attribute ${attribute} is the wrong type: ${typeOf(value)}!`;
         }
