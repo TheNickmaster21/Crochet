@@ -1,19 +1,22 @@
-/** Services and controllers implementing this interface will have their onInit() method
- *  called immediately after they are registered.
+/**
+ * Services and controllers implementing this interface will have their onInit() method
+ * called immediately after they are registered.
  */
 export interface OnInit {
     onInit(): void;
 }
 
-/** Services and controllers implementing this interface will have their onStart() method
- *  called after start() is called on the server Crochet and after onInit() has been
- *  called on all other services and controllers.
+/**
+ * Services and controllers implementing this interface will have their onStart() method
+ * called after start() is called on the server Crochet and after onInit() has been
+ * called on all other services and controllers.
  */
 export interface OnStart {
     onStart(): void;
 }
 
-/** Services and Controllers implementing this interface will have their onHeartbeat()
+/**
+ * Services and Controllers implementing this interface will have their onHeartbeat()
  * method called every Heartbeat of RunService after start() is called on the server
  * Crochet.
  */
@@ -33,12 +36,13 @@ export type ParameterChecks<F> = F extends (...args: infer P) => unknown ? { [K 
 /** Type for a type checks for the return type of a function. */
 export type ReturnCheck<F extends UnknownFunction> = TypeCheck<ReturnType<F>>;
 
-/** Function definitions are used to define functions that are bound to remote
+/**
+ * Function definitions are used to define functions that are bound to remote
  * functions and bindable functions. Function Definitions are used by the
  * Crochet to indentify functions in a type safe way.
  *
- * ex. A functions that takes a string as the first argument, a number as the
- *     second argument, and returns a boolean
+ * @example // A functions that takes a string as the first argument, a number as the
+ * // second argument, and returns a boolean
  * new FunctionDefinition<[string, number], boolean>('TestFunction')
  */
 export class FunctionDefinition<F extends UnknownFunction> {
@@ -57,11 +61,12 @@ export class FunctionDefinition<F extends UnknownFunction> {
     }
 }
 
-/** Event definitions are used to define events that are bound to remote
+/**
+ * Event definitions are used to define events that are bound to remote
  * events and bindable events. Event Definitions are used by the
  * Crochet to indentify events in a type safe way.
  *
- * ex. An event that returns two numbers
+ * @example // An event that returns two numbers
  * new EventDefinition<[number, number]>('TestEvent')
  */
 export class EventDefinition<A extends unknown[]> {
@@ -79,6 +84,14 @@ export class EventDefinition<A extends unknown[]> {
     }
 }
 
+/**
+ * Attribute definitions are used to define attributes and an
+ * associated type guard. Declaring attributes allows more type
+ * safety when getting and saving attributes.
+ *
+ * @example // A string attribute called 'SecondName' using `@rbxts/t`
+ * new Attribute('SecondName', t.string);
+ */
 export class Attribute<T> {
     constructor(public name: string, public typeCheck?: TypeCheck<T>) {}
 }
@@ -145,7 +158,8 @@ export abstract class CrochetCore {
      * @param functionDefinition The FunctionDefinition used to retreive and call the function
      * @returns A function that invokes the BindableFunction
      *
-     * @example Crochet.getBindableFunction(new FunctionDefinition<[string, number], boolean>('MyFunction'))('a', 1)
+     * @example
+     * Crochet.getBindableFunction(new FunctionDefinition<[string, number], boolean>('MyFunction'))('a', 1)
      */
     public getBindableFunction<F extends UnknownFunction>(
         functionDefinition: FunctionDefinition<F>
@@ -248,7 +262,8 @@ export abstract class CrochetCore {
      * @param eventDefinition The EventDefinition used to retreive and call the event
      * @returns A function that can be invoked to fire the BindableEvent.
      *
-     * @example Crochet.getBindableEventFunction(new EventDefinition<[boolean]>('MyEvent'))(false);
+     * @example 
+     * Crochet.getBindableEventFunction(new EventDefinition<[boolean]>('MyEvent'))(false);
      */
     public getBindableEventFunction<A extends unknown[]>(eventDefinition: EventDefinition<A>): (...params: A) => void {
         const bindableEvent = this.fetchEventWithDefinition(eventDefinition) as BindableEvent;
@@ -263,7 +278,7 @@ export abstract class CrochetCore {
 
     /**
      * Safely returns an attribute from a Roblox instance.
-     * @experimental
+     * @experimental Relies on a Beta Roblox Feature!
      *
      * @param instance Roblox instance to get the attribute from
      * @param attribute Attribute object for the attribute to get
@@ -271,7 +286,7 @@ export abstract class CrochetCore {
     public getAttribute<T>(instance: Instance, attribute: Attribute<T>): T | undefined;
     /**
      * Safely returns an attribute from a Roblox instance.
-     * @experimental
+     * @experimental Relies on a Beta Roblox Feature!
      *
      * @param instance Roblox instance to get the attribute from
      * @param attribute Name of the attribute to get
@@ -299,7 +314,7 @@ export abstract class CrochetCore {
 
     /**
      * Safely sets an attribute on a Roblox instance.
-     * @experimental
+     * @experimental Relies on a Beta Roblox Feature!
      *
      * @param instance Roblox instance to set the attribute on
      * @param attribute Attribute object for the attribute to set
@@ -308,7 +323,7 @@ export abstract class CrochetCore {
     public setAttribute<T>(instance: Instance, attribute: Attribute<T>, value: T | undefined): void;
     /**
      * Safely sets an attribute on a Roblox instance.
-     * @experimental
+     * @experimental Relies on a Beta Roblox Feature!
      *
      * @param instance Roblox instance to set the attribute on
      * @param attribute Name of the attribute to set
