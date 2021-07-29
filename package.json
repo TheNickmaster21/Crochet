@@ -1,6 +1,6 @@
 {
     "name": "@rbxts/crochet",
-    "version": "1.0.0-beta.2.1",
+    "version": "1.0.0-beta.3.0",
     "description": "Crochet is a framework for Roblox games written for use with roblox-ts",
     "repository": {
         "type": "git",
@@ -18,16 +18,16 @@
     "main": "out/init.lua",
     "types": "out/index.d.ts",
     "devDependencies": {
-        "@rbxts/compiler-types": "^1.0.0-beta.15",
-        "@rbxts/types": "^1.0.439",
-        "@typescript-eslint/eslint-plugin": "^4.14.0",
-        "@typescript-eslint/parser": "^4.14.0",
-        "eslint": "^7.18.0",
-        "eslint-config-prettier": "^7.2.0",
-        "eslint-plugin-prettier": "^3.3.1",
-        "eslint-plugin-roblox-ts": "0.0.24",
-        "prettier": "^2.2.1",
-        "typescript": "^4.1.3"
+        "@rbxts/compiler-types": "^1.2.3-types.0",
+        "@rbxts/types": "^1.0.508",
+        "@typescript-eslint/eslint-plugin": "^4.28.5",
+        "@typescript-eslint/parser": "^4.28.5",
+        "eslint": "^7.31.0",
+        "eslint-config-prettier": "^8.3.0",
+        "eslint-plugin-prettier": "^3.4.0",
+        "eslint-plugin-roblox-ts": "0.0.30",
+        "prettier": "^2.3.2",
+        "typescript": "^4.3.5"
     },
     "dependencies": {
         "@rbxts/object-utils": "^1.0.4"
