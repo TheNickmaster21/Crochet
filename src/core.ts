@@ -278,7 +278,6 @@ export abstract class CrochetCore {
 
     /**
      * Safely returns an attribute from a Roblox instance.
-     * @experimental Relies on a Beta Roblox Feature!
      *
      * @param instance Roblox instance to get the attribute from
      * @param attribute Attribute object for the attribute to get
@@ -286,7 +285,6 @@ export abstract class CrochetCore {
     public getAttribute<T>(instance: Instance, attribute: AttributeDefinition<T>): T | undefined;
     /**
      * Safely returns an attribute from a Roblox instance.
-     * @experimental Relies on a Beta Roblox Feature!
      *
      * @param instance Roblox instance to get the attribute from
      * @param attribute Name of the attribute to get
@@ -316,7 +314,6 @@ export abstract class CrochetCore {
 
     /**
      * Safely sets an attribute on a Roblox instance.
-     * @experimental Relies on a Beta Roblox Feature!
      *
      * @param instance Roblox instance to set the attribute on
      * @param attribute Attribute object for the attribute to set
@@ -325,7 +322,6 @@ export abstract class CrochetCore {
     public setAttribute<T>(instance: Instance, attribute: AttributeDefinition<T>, value: T | undefined): void;
     /**
      * Safely sets an attribute on a Roblox instance.
-     * @experimental Relies on a Beta Roblox Feature!
      *
      * @param instance Roblox instance to set the attribute on
      * @param attribute Name of the attribute to set
