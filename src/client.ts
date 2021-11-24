@@ -67,17 +67,6 @@ export class CrochetClientImplementation extends CrochetCore {
     }
 
     /**
-     *  Register mulitple controllers at once.
-     *
-     * @param controllerConstructors The constuctors of multiple controllers being registered
-     * @throws Controllers can only be registered before start() has been called
-     * @throws Controllers can only be registered once
-     */
-    public registerControllers(controllerConstructors: ControllerConstructor[]): void {
-        controllerConstructors.forEach((controllerConstructor) => this.registerController(controllerConstructor));
-    }
-
-    /**
      *  Register a controller. Once a controller is registered, it's onInit method will be called (if one
      *  exists). Once controllers are registered, they can be retreived on the server by calling getController().
      *
@@ -101,6 +90,17 @@ export class CrochetClientImplementation extends CrochetCore {
         if ('onInit' in controller) {
             (controller as OnInit).onInit();
         }
+    }
+
+    /**
+     *  Register mulitple controllers at once.
+     *
+     * @param controllerConstructors The constuctors of multiple controllers being registered
+     * @throws Controllers can only be registered before start() has been called
+     * @throws Controllers can only be registered once
+     */
+    public registerControllers(controllerConstructors: ControllerConstructor[]): void {
+        controllerConstructors.forEach((controllerConstructor) => this.registerController(controllerConstructor));
     }
 
     /**

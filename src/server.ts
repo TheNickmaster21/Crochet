@@ -66,17 +66,6 @@ export class CrochetServerImplementation extends CrochetCore {
     }
 
     /**
-     * Register mulitple services at once.
-     *
-     * @param serviceConstructors The constuctors of multiple services being registered
-     * @throws Services can only be registered before start() has been called
-     * @throws Services can only be registered once
-     */
-    public registerServices(serviceConstructors: ServiceConstructor[]): void {
-        serviceConstructors.forEach((serviceConstructor) => this.registerService(serviceConstructor));
-    }
-
-    /**
      * Register a service. Once a service is registered, it's onInit method will be called (if one
      * exists). Once services are registered, they can be retreived on the server by calling getService().
      *
@@ -97,6 +86,17 @@ export class CrochetServerImplementation extends CrochetCore {
         if ('onInit' in service) {
             (service as OnInit).onInit();
         }
+    }
+
+    /**
+     * Register mulitple services at once.
+     *
+     * @param serviceConstructors The constuctors of multiple services being registered
+     * @throws Services can only be registered before start() has been called
+     * @throws Services can only be registered once
+     */
+    public registerServices(serviceConstructors: ServiceConstructor[]): void {
+        serviceConstructors.forEach((serviceConstructor) => this.registerService(serviceConstructor));
     }
 
     /**
@@ -130,6 +130,15 @@ export class CrochetServerImplementation extends CrochetCore {
         if (functionDefinition.returnTypeGuard !== undefined) {
             this.functionReturnTypeGuard.set(name, functionDefinition.returnTypeGuard);
         }
+    }
+
+    /**
+     * Register RemoteFunctions to be used later.
+     *
+     * @param functionDefinition The FunctionDefinitions to be registered
+     */
+    public registerRemoteFunctions<F extends UnknownFunction>(functionDefinitions: FunctionDefinition<F>[]): void {
+        functionDefinitions.forEach((functionDefinition) => this.registerRemoteFunction(functionDefinition));
     }
 
     /**
@@ -229,6 +238,15 @@ export class CrochetServerImplementation extends CrochetCore {
         if (eventDefinition.parameterTypeguards) {
             this.eventParameterTypeGuards.set(name, eventDefinition.parameterTypeguards);
         }
+    }
+
+    /**
+     * Register RemoteEvents to be used later.
+     *
+     * @param eventDefinition The EventDefinitions to be registered
+     */
+    public registerRemoteEvents<A extends unknown[]>(eventDefinitions: EventDefinition<A>[]): void {
+        eventDefinitions.forEach((eventDefinition) => this.registerRemoteEvent(eventDefinition));
     }
 
     /**

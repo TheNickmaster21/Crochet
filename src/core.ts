@@ -111,7 +111,7 @@ export abstract class CrochetCore {
     /**
      * Register a BindableFunction so that it can be used later.
      *
-     * @param functionDefinition The FunctionDefinition used to retreive and call the function
+     * @param functionDefinition The FunctionDefinition to be registered
      */
     public registerBindableFunction<F extends UnknownFunction>(functionDefinition: FunctionDefinition<F>): void {
         const name = functionDefinition.functionIdentifier;
@@ -125,6 +125,15 @@ export abstract class CrochetCore {
         if (functionDefinition.returnTypeGuard !== undefined) {
             this.functionReturnTypeGuard.set(name, functionDefinition.returnTypeGuard);
         }
+    }
+
+    /**
+     * Register BindableFunctions to be used later.
+     *
+     * @param functionDefinition The FunctionDefinitions to be registered
+     */
+    public registerBindableFunctions<F extends UnknownFunction>(functionDefinitions: FunctionDefinition<F>[]): void {
+        functionDefinitions.forEach((functionDefinition) => this.registerBindableFunction(functionDefinition));
     }
 
     /**
@@ -221,7 +230,7 @@ export abstract class CrochetCore {
     }
 
     /**
-     * Register a BindableFunction so that it can be used later.
+     * Register a BindableEvent so that it can be used later.
      *
      * @param eventDefinition The EventDefinition used to retreive and call the event
      */
@@ -233,6 +242,15 @@ export abstract class CrochetCore {
         if (eventDefinition.parameterTypeguards) {
             this.eventParameterTypeGuards.set(name, eventDefinition.parameterTypeguards);
         }
+    }
+
+    /**
+     * Register BindableEvents to be used later.
+     *
+     * @param eventDefinition The EventDefinitions to register
+     */
+    public registerBindableEvents<A extends unknown[]>(eventDefinitions: EventDefinition<A>[]): void {
+        eventDefinitions.forEach((eventDefinition) => this.registerBindableEvent(eventDefinition));
     }
 
     /**
