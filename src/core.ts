@@ -1,4 +1,24 @@
 /**
+ * The abstract base class that all Components must extend. Components are
+ * classes that are bound to Instances at run time that have a given tag T.
+ * Component lifecycle is managed automatically by Crochet.
+ */
+export abstract class Component {
+    constructor(protected instance: Instance) {}
+
+    /**
+     * The method called after the tag that caused the instance to be bound
+     * to the component is removed.
+     */
+    abstract onTagRemoved(): void;
+}
+
+/**
+ * The type definition for constructors of Services.
+ */
+type ComponentConstructor = new (instance: Instance) => Component;
+
+/**
  * Services and controllers implementing this interface will have their onInit() method
  * called immediately after they are registered.
  */
@@ -35,6 +55,9 @@ export type ParameterChecks<F> = F extends (...args: infer P) => unknown ? { [K 
 
 /** Type for a type checks for the return type of a function. */
 export type ReturnCheck<F extends UnknownFunction> = TypeCheck<ReturnType<F>>;
+
+/** Reference to the CollectionService */
+const CollectionService = game.GetService('CollectionService');
 
 /**
  * Function definitions are used to define functions that are bound to remote
@@ -103,10 +126,10 @@ export abstract class CrochetCore {
     protected FunctionFolder?: Folder;
     protected EventFolder?: Folder;
 
-    protected functionParameterTypeGuards: Map<string, TypeCheck<unknown>[]> = new Map();
-    protected functionReturnTypeGuard: Map<string, TypeCheck<unknown>> = new Map();
+    protected functionParameterTypeGuards = new Map<string, TypeCheck<unknown>[]>();
+    protected functionReturnTypeGuard = new Map<string, TypeCheck<unknown>>();
 
-    protected eventParameterTypeGuards: Map<string, TypeCheck<unknown>[]> = new Map();
+    protected eventParameterTypeGuards = new Map<string, TypeCheck<unknown>[]>();
 
     /**
      * Register a BindableFunction so that it can be used later.
@@ -389,5 +412,41 @@ export abstract class CrochetCore {
             }
         }
         return true;
+    }
+
+    /**
+     * Register a service. Once a service is registered, it's onInit method will be called (if one
+     * exists). Once services are registered, they can be retreived on the server by calling getService().
+     *
+     * @param componentConstructor The constructor of the Component being registered
+     * @param tag The tag to find instances to bind the component to
+     *
+     * @example CrochetServer.registerService(MyService);
+     */
+    public registerComponentForTag(componentConstructor: ComponentConstructor, tag: string): void {
+        const components = new Map<Instance, Component>();
+        const bindToInstance = (instance: Instance) => {
+            const component = new componentConstructor(instance);
+            components.set(instance, component);
+        };
+
+        CollectionService.GetInstanceAddedSignal(tag).Connect(bindToInstance);
+        CollectionService.GetTagged(tag).forEach(bindToInstance);
+        CollectionService.GetInstanceRemovedSignal(tag).Connect((instance) => {
+            const component = components.get(instance);
+            if (component !== undefined) {
+                component.onTagRemoved();
+                components.delete(instance);
+            }
+        });
+    }
+
+    /**
+     * Register mulitple components at once.
+     *
+     * @param componentConstructors The constuctors of multiple components being registered
+     */
+    public registerComponents(componentBindings: [ComponentConstructor, string][]): void {
+        componentBindings.forEach((componentBinding) => this.registerComponentForTag(...componentBinding));
     }
 }

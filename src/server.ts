@@ -12,7 +12,9 @@ import {
 import Object from '@rbxts/object-utils';
 
 /**
- * The abstract base class that all services must extend.
+ * The abstract base class that all services must extend. Services are
+ * singletons that are created on the server to manage behaviors not tied to
+ * single instances.
  */
 export abstract class Service {}
 

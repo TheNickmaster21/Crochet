@@ -12,7 +12,9 @@ import {
 import Object from '@rbxts/object-utils';
 
 /**
- * The abstract base class that all controllers must extend.
+ * The abstract base class that all controllers must extend. Controllers are
+ * singletons that are created on the client to manage behaviors not tied to
+ * single instances.
  */
 export abstract class Controller {}
 
