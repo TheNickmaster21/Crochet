@@ -11,7 +11,7 @@ function getErroringObject(errorMessage: string): unknown {
     return setmetatable(
         {},
         {
-            __index() {
+            __index: () => {
                 error(errorMessage);
             }
         }
