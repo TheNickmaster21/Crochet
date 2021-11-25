@@ -1,22 +1,23 @@
 /**
- * The abstract base class that all Components must extend. Components are
- * classes that are bound to Instances at run time that have a given tag T.
- * Component lifecycle is managed automatically by Crochet.
+ * The abstract base class that all tag components must extend. Tag components
+ * are classes that are bound to Instances at run time that have a given tag T.
+ * Tag component lifecycle is managed automatically by Crochet.
  */
-export abstract class Component {
+export abstract class TagComponent {
     constructor(protected instance: Instance) {}
 
     /**
      * The method called after the tag that caused the instance to be bound
-     * to the component is removed.
+     * to the tag component is removed. This method is meant to be overriden
+     * in subclasses but is not required to be implemented.
      */
-    abstract onTagRemoved(): void;
+    onTagRemoved(): void {}
 }
 
 /**
- * The type definition for constructors of Services.
+ * The type definition for constructors of TagComponents.
  */
-type ComponentConstructor = new (instance: Instance) => Component;
+type TagComponentConstructor = new (instance: Instance) => TagComponent;
 
 /**
  * Services and controllers implementing this interface will have their onInit() method
@@ -415,38 +416,40 @@ export abstract class CrochetCore {
     }
 
     /**
-     * Register a service. Once a service is registered, it's onInit method will be called (if one
-     * exists). Once services are registered, they can be retreived on the server by calling getService().
+     * Register a tag component. Tag components will be added to all instances with a
+     * given tag when registered and will be added to any instances to recieve that tag
+     * after being registered. After a tag is removed from an instance, the tag component's
+     * onTagRemoved method will be called.
      *
-     * @param componentConstructor The constructor of the Component being registered
+     * @param tagComponentConstructor The constructor of the Component being registered
      * @param tag The tag to find instances to bind the component to
      *
      * @example CrochetServer.registerService(MyService);
      */
-    public registerComponentForTag(componentConstructor: ComponentConstructor, tag: string): void {
-        const components = new Map<Instance, Component>();
+    public registerTagComponentForTag(tagComponentConstructor: TagComponentConstructor, tag: string): void {
+        const tagComponents = new Map<Instance, TagComponent>();
         const bindToInstance = (instance: Instance) => {
-            const component = new componentConstructor(instance);
-            components.set(instance, component);
+            const tagComponent = new tagComponentConstructor(instance);
+            tagComponents.set(instance, tagComponent);
         };
 
         CollectionService.GetInstanceAddedSignal(tag).Connect(bindToInstance);
         CollectionService.GetTagged(tag).forEach(bindToInstance);
         CollectionService.GetInstanceRemovedSignal(tag).Connect((instance) => {
-            const component = components.get(instance);
-            if (component !== undefined) {
-                component.onTagRemoved();
-                components.delete(instance);
+            const tagComponent = tagComponents.get(instance);
+            if (tagComponent !== undefined) {
+                tagComponent.onTagRemoved();
+                tagComponents.delete(instance);
             }
         });
     }
 
     /**
-     * Register mulitple components at once.
+     * Register mulitple tag components at once.
      *
-     * @param componentConstructors The constuctors of multiple components being registered
+     * @param tagComponentConstructors The constuctors of multiple tag components being registered
      */
-    public registerComponents(componentBindings: [ComponentConstructor, string][]): void {
-        componentBindings.forEach((componentBinding) => this.registerComponentForTag(...componentBinding));
+    public registerTagComponents(tagComponentBindings: [TagComponentConstructor, string][]): void {
+        tagComponentBindings.forEach((tagComponentBinding) => this.registerTagComponentForTag(...tagComponentBinding));
     }
 }
