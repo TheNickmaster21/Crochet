@@ -1,10 +1,20 @@
 import {
-    CROCHET_FOLDER_NAME, CrochetCore, EventDefinition, FunctionDefinition, OnHeartbeat, OnInit,
-    OnStart, UnknownFunction
+    CROCHET_FOLDER_NAME,
+    CrochetCore,
+    EventDefinition,
+    FunctionDefinition,
+    OnHeartbeat,
+    OnInit,
+    OnStart,
+    UnknownFunction
 } from 'core';
 
+import Object from '@rbxts/object-utils';
+
 /**
- * The abstract base class that all services must extend.
+ * The abstract base class that all services must extend. Services are
+ * singletons that are created on the server to manage behaviors not tied to
+ * single instances.
  */
 export abstract class Service {}
 
@@ -19,7 +29,7 @@ type ServiceConstructor = new () => Service;
 export class CrochetServerImplementation extends CrochetCore {
     private services = new Map<string, Service>();
 
-    private starting: boolean = false;
+    private starting = false;
 
     public constructor() {
         super();
@@ -43,7 +53,7 @@ export class CrochetServerImplementation extends CrochetCore {
 
         this.CrochetFolder!.Parent = script.Parent;
 
-        this.services.values().forEach((service) => {
+        Object.values(this.services).forEach((service) => {
             if ('onStart' in service) {
                 (service as OnStart).onStart();
             }
@@ -55,17 +65,6 @@ export class CrochetServerImplementation extends CrochetCore {
         const setup = new Instance('BoolValue');
         setup.Name = 'Started';
         setup.Parent = script.Parent;
-    }
-
-    /**
-     * Register mulitple services at once.
-     *
-     * @param serviceConstructors The constuctors of multiple services being registered
-     * @throws Services can only be registered before start() has been called
-     * @throws Services can only be registered once
-     */
-    public registerServices(serviceConstructors: ServiceConstructor[]): void {
-        serviceConstructors.forEach((serviceConstructor) => this.registerService(serviceConstructor));
     }
 
     /**
@@ -89,6 +88,17 @@ export class CrochetServerImplementation extends CrochetCore {
         if ('onInit' in service) {
             (service as OnInit).onInit();
         }
+    }
+
+    /**
+     * Register mulitple services at once.
+     *
+     * @param serviceConstructors The constuctors of multiple services being registered
+     * @throws Services can only be registered before start() has been called
+     * @throws Services can only be registered once
+     */
+    public registerServices(serviceConstructors: ServiceConstructor[]): void {
+        serviceConstructors.forEach((serviceConstructor) => this.registerService(serviceConstructor));
     }
 
     /**
@@ -119,9 +129,18 @@ export class CrochetServerImplementation extends CrochetCore {
         if (functionDefinition.parameterTypeguards) {
             this.functionParameterTypeGuards.set(name, functionDefinition.parameterTypeguards);
         }
-        if (functionDefinition.returnTypeGuard) {
+        if (functionDefinition.returnTypeGuard !== undefined) {
             this.functionReturnTypeGuard.set(name, functionDefinition.returnTypeGuard);
         }
+    }
+
+    /**
+     * Register RemoteFunctions to be used later.
+     *
+     * @param functionDefinition The FunctionDefinitions to be registered
+     */
+    public registerRemoteFunctions<F extends UnknownFunction>(functionDefinitions: FunctionDefinition<F>[]): void {
+        functionDefinitions.forEach((functionDefinition) => this.registerRemoteFunction(functionDefinition));
     }
 
     /**
@@ -196,7 +215,7 @@ export class CrochetServerImplementation extends CrochetCore {
                 `Parameters are wrong for the function ${functionDefinition.functionIdentifier}!`
             );
             return new Promise((resolve) =>
-                Promise.spawn(() => {
+                Promise.defer(() => {
                     const result = remoteFunction.InvokeClient(player, ...params) as ReturnType<F>;
                     assert(
                         this.verifyFunctionReturnTypeWithDefinition(result, functionDefinition),
@@ -221,6 +240,15 @@ export class CrochetServerImplementation extends CrochetCore {
         if (eventDefinition.parameterTypeguards) {
             this.eventParameterTypeGuards.set(name, eventDefinition.parameterTypeguards);
         }
+    }
+
+    /**
+     * Register RemoteEvents to be used later.
+     *
+     * @param eventDefinition The EventDefinitions to be registered
+     */
+    public registerRemoteEvents<A extends unknown[]>(eventDefinitions: EventDefinition<A>[]): void {
+        eventDefinitions.forEach((eventDefinition) => this.registerRemoteEvent(eventDefinition));
     }
 
     /**

@@ -1,19 +1,43 @@
-/** Services and controllers implementing this interface will have their onInit() method
- *  called immediately after they are registered.
+/**
+ * The abstract base class that all tag components must extend. Tag components
+ * are classes that are bound to Instances at run time that have a given tag T.
+ * Tag component lifecycle is managed automatically by Crochet.
+ */
+export abstract class TagComponent {
+    constructor(protected instance: Instance) {}
+
+    /**
+     * The method called after the tag that caused the instance to be bound
+     * to the tag component is removed. This method is meant to be overriden
+     * in subclasses but is not required to be implemented.
+     */
+    onTagRemoved(): void {}
+}
+
+/**
+ * The type definition for constructors of TagComponents.
+ */
+type TagComponentConstructor = new (instance: Instance) => TagComponent;
+
+/**
+ * Services and controllers implementing this interface will have their onInit() method
+ * called immediately after they are registered.
  */
 export interface OnInit {
     onInit(): void;
 }
 
-/** Services and controllers implementing this interface will have their onStart() method
- *  called after start() is called on the server Crochet and after onInit() has been
- *  called on all other services and controllers.
+/**
+ * Services and controllers implementing this interface will have their onStart() method
+ * called after start() is called on the server Crochet and after onInit() has been
+ * called on all other services and controllers.
  */
 export interface OnStart {
     onStart(): void;
 }
 
-/** Services and Controllers implementing this interface will have their onHeartbeat()
+/**
+ * Services and Controllers implementing this interface will have their onHeartbeat()
  * method called every Heartbeat of RunService after start() is called on the server
  * Crochet.
  */
@@ -33,12 +57,16 @@ export type ParameterChecks<F> = F extends (...args: infer P) => unknown ? { [K 
 /** Type for a type checks for the return type of a function. */
 export type ReturnCheck<F extends UnknownFunction> = TypeCheck<ReturnType<F>>;
 
-/** Function definitions are used to define functions that are bound to remote
+/** Reference to the CollectionService */
+const CollectionService = game.GetService('CollectionService');
+
+/**
+ * Function definitions are used to define functions that are bound to remote
  * functions and bindable functions. Function Definitions are used by the
  * Crochet to indentify functions in a type safe way.
  *
- * ex. A functions that takes a string as the first argument, a number as the
- *     second argument, and returns a boolean
+ * @example // A functions that takes a string as the first argument, a number as the
+ * // second argument, and returns a boolean
  * new FunctionDefinition<[string, number], boolean>('TestFunction')
  */
 export class FunctionDefinition<F extends UnknownFunction> {
@@ -57,11 +85,12 @@ export class FunctionDefinition<F extends UnknownFunction> {
     }
 }
 
-/** Event definitions are used to define events that are bound to remote
+/**
+ * Event definitions are used to define events that are bound to remote
  * events and bindable events. Event Definitions are used by the
  * Crochet to indentify events in a type safe way.
  *
- * ex. An event that returns two numbers
+ * @example // An event that returns two numbers
  * new EventDefinition<[number, number]>('TestEvent')
  */
 export class EventDefinition<A extends unknown[]> {
@@ -79,6 +108,18 @@ export class EventDefinition<A extends unknown[]> {
     }
 }
 
+/**
+ * Attribute definitions are used to define attributes and an
+ * associated type guard. Declaring attributes allows more type
+ * safety when getting and saving attributes.
+ *
+ * @example // A string attribute called 'SecondName' using `@rbxts/t`
+ * new AttributeDefinition('SecondName', t.string);
+ */
+export class AttributeDefinition<T> {
+    constructor(public name: string, public typeCheck?: TypeCheck<T>) {}
+}
+
 export const CROCHET_FOLDER_NAME = 'Crochet';
 
 export abstract class CrochetCore {
@@ -86,15 +127,15 @@ export abstract class CrochetCore {
     protected FunctionFolder?: Folder;
     protected EventFolder?: Folder;
 
-    protected functionParameterTypeGuards: Map<string, TypeCheck<unknown>[]> = new Map();
-    protected functionReturnTypeGuard: Map<string, TypeCheck<unknown>> = new Map();
+    protected functionParameterTypeGuards = new Map<string, TypeCheck<unknown>[]>();
+    protected functionReturnTypeGuard = new Map<string, TypeCheck<unknown>>();
 
-    protected eventParameterTypeGuards: Map<string, TypeCheck<unknown>[]> = new Map();
+    protected eventParameterTypeGuards = new Map<string, TypeCheck<unknown>[]>();
 
     /**
      * Register a BindableFunction so that it can be used later.
      *
-     * @param functionDefinition The FunctionDefinition used to retreive and call the function
+     * @param functionDefinition The FunctionDefinition to be registered
      */
     public registerBindableFunction<F extends UnknownFunction>(functionDefinition: FunctionDefinition<F>): void {
         const name = functionDefinition.functionIdentifier;
@@ -105,9 +146,18 @@ export abstract class CrochetCore {
         if (functionDefinition.parameterTypeguards) {
             this.functionParameterTypeGuards.set(name, functionDefinition.parameterTypeguards);
         }
-        if (functionDefinition.returnTypeGuard) {
+        if (functionDefinition.returnTypeGuard !== undefined) {
             this.functionReturnTypeGuard.set(name, functionDefinition.returnTypeGuard);
         }
+    }
+
+    /**
+     * Register BindableFunctions to be used later.
+     *
+     * @param functionDefinition The FunctionDefinitions to be registered
+     */
+    public registerBindableFunctions<F extends UnknownFunction>(functionDefinitions: FunctionDefinition<F>[]): void {
+        functionDefinitions.forEach((functionDefinition) => this.registerBindableFunction(functionDefinition));
     }
 
     /**
@@ -141,7 +191,8 @@ export abstract class CrochetCore {
      * @param functionDefinition The FunctionDefinition used to retreive and call the function
      * @returns A function that invokes the BindableFunction
      *
-     * @example Crochet.getBindableFunction(new FunctionDefinition<[string, number], boolean>('MyFunction'))('a', 1)
+     * @example
+     * Crochet.getBindableFunction(new FunctionDefinition<[string, number], boolean>('MyFunction'))('a', 1)
      */
     public getBindableFunction<F extends UnknownFunction>(
         functionDefinition: FunctionDefinition<F>
@@ -203,7 +254,7 @@ export abstract class CrochetCore {
     }
 
     /**
-     * Register a BindableFunction so that it can be used later.
+     * Register a BindableEvent so that it can be used later.
      *
      * @param eventDefinition The EventDefinition used to retreive and call the event
      */
@@ -215,6 +266,15 @@ export abstract class CrochetCore {
         if (eventDefinition.parameterTypeguards) {
             this.eventParameterTypeGuards.set(name, eventDefinition.parameterTypeguards);
         }
+    }
+
+    /**
+     * Register BindableEvents to be used later.
+     *
+     * @param eventDefinition The EventDefinitions to register
+     */
+    public registerBindableEvents<A extends unknown[]>(eventDefinitions: EventDefinition<A>[]): void {
+        eventDefinitions.forEach((eventDefinition) => this.registerBindableEvent(eventDefinition));
     }
 
     /**
@@ -244,7 +304,8 @@ export abstract class CrochetCore {
      * @param eventDefinition The EventDefinition used to retreive and call the event
      * @returns A function that can be invoked to fire the BindableEvent.
      *
-     * @example Crochet.getBindableEventFunction(new EventDefinition<[boolean]>('MyEvent'))(false);
+     * @example
+     * Crochet.getBindableEventFunction(new EventDefinition<[boolean]>('MyEvent'))(false);
      */
     public getBindableEventFunction<A extends unknown[]>(eventDefinition: EventDefinition<A>): (...params: A) => void {
         const bindableEvent = this.fetchEventWithDefinition(eventDefinition) as BindableEvent;
@@ -255,6 +316,76 @@ export abstract class CrochetCore {
             );
             bindableEvent.Fire(...params);
         }) as (...params: A) => void;
+    }
+
+    /**
+     * Safely returns an attribute from a Roblox instance.
+     *
+     * @param instance Roblox instance to get the attribute from
+     * @param attribute Attribute object for the attribute to get
+     */
+    public getAttribute<T>(instance: Instance, attribute: AttributeDefinition<T>): T | undefined;
+    /**
+     * Safely returns an attribute from a Roblox instance.
+     *
+     * @param instance Roblox instance to get the attribute from
+     * @param attribute Name of the attribute to get
+     * @param typeCheck Optional TypeCheck for the resulting attribute
+     */
+    public getAttribute<T>(instance: Instance, attribute: string, typeCheck?: TypeCheck<T>): T | undefined;
+    public getAttribute<T>(
+        instance: Instance,
+        attribute: AttributeDefinition<T> | string,
+        typeCheck?: TypeCheck<T>
+    ): T | undefined {
+        const attributeName = typeIs(attribute, 'string') ? attribute : (attribute as AttributeDefinition<T>).name;
+        const attributeValue = instance.GetAttribute(attributeName);
+        const typeCheckFunction = typeIs(attribute, 'string')
+            ? typeCheck
+            : (attribute as AttributeDefinition<T>).typeCheck;
+        if (typeCheckFunction !== undefined) {
+            if (attributeValue === undefined || typeCheckFunction(attributeValue)) {
+                return attributeValue;
+            } else {
+                throw `Attribute ${attribute} is the wrong type: ${typeOf(attributeValue)}!`;
+            }
+        }
+
+        return attributeValue as T | undefined;
+    }
+
+    /**
+     * Safely sets an attribute on a Roblox instance.
+     *
+     * @param instance Roblox instance to set the attribute on
+     * @param attribute Attribute object for the attribute to set
+     * @param value Value to set the attribute propery as
+     */
+    public setAttribute<T>(instance: Instance, attribute: AttributeDefinition<T>, value: T | undefined): void;
+    /**
+     * Safely sets an attribute on a Roblox instance.
+     *
+     * @param instance Roblox instance to set the attribute on
+     * @param attribute Name of the attribute to set
+     * @param value Value to set the attribute propery as
+     * @param typeCheck Optional TypeCheck for the attribute
+     */
+    public setAttribute<T>(instance: Instance, attribute: string, value: T | undefined, typeCheck?: TypeCheck<T>): void;
+    public setAttribute<T>(
+        instance: Instance,
+        attribute: AttributeDefinition<T> | string,
+        value: T | undefined,
+        typeCheck?: TypeCheck<T>
+    ): void {
+        const attributeName = typeIs(attribute, 'string') ? attribute : (attribute as AttributeDefinition<T>).name;
+        const typeCheckFunction = typeIs(attribute, 'string')
+            ? typeCheck
+            : (attribute as AttributeDefinition<T>).typeCheck;
+        if (typeCheckFunction !== undefined && value !== undefined && !typeCheckFunction(value)) {
+            throw `Attribute ${attribute} is the wrong type: ${typeOf(value)}!`;
+        }
+
+        instance.SetAttribute(attributeName, value);
     }
 
     protected fetchEventWithDefinition(eventDefinition: EventDefinition<unknown[]>): RemoteEvent | BindableEvent {
@@ -282,5 +413,43 @@ export abstract class CrochetCore {
             }
         }
         return true;
+    }
+
+    /**
+     * Register a tag component. Tag components will be added to all instances with a
+     * given tag when registered and will be added to any instances to recieve that tag
+     * after being registered. After a tag is removed from an instance, the tag component's
+     * onTagRemoved method will be called.
+     *
+     * @param tagComponentConstructor The constructor of the Component being registered
+     * @param tag The tag to find instances to bind the component to
+     *
+     * @example CrochetServer.registerService(MyService);
+     */
+    public registerTagComponentForTag(tagComponentConstructor: TagComponentConstructor, tag: string): void {
+        const tagComponents = new Map<Instance, TagComponent>();
+        const bindToInstance = (instance: Instance) => {
+            const tagComponent = new tagComponentConstructor(instance);
+            tagComponents.set(instance, tagComponent);
+        };
+
+        CollectionService.GetInstanceAddedSignal(tag).Connect(bindToInstance);
+        CollectionService.GetTagged(tag).forEach(bindToInstance);
+        CollectionService.GetInstanceRemovedSignal(tag).Connect((instance) => {
+            const tagComponent = tagComponents.get(instance);
+            if (tagComponent !== undefined) {
+                tagComponent.onTagRemoved();
+                tagComponents.delete(instance);
+            }
+        });
+    }
+
+    /**
+     * Register mulitple tag components at once.
+     *
+     * @param tagComponentConstructors The constuctors of multiple tag components being registered
+     */
+    public registerTagComponents(tagComponentBindings: [TagComponentConstructor, string][]): void {
+        tagComponentBindings.forEach((tagComponentBinding) => this.registerTagComponentForTag(...tagComponentBinding));
     }
 }

@@ -1,10 +1,20 @@
 import {
-    CROCHET_FOLDER_NAME, CrochetCore, EventDefinition, FunctionDefinition, OnHeartbeat, OnInit,
-    OnStart, UnknownFunction
+    CROCHET_FOLDER_NAME,
+    CrochetCore,
+    EventDefinition,
+    FunctionDefinition,
+    OnHeartbeat,
+    OnInit,
+    OnStart,
+    UnknownFunction
 } from 'core';
 
+import Object from '@rbxts/object-utils';
+
 /**
- * The abstract base class that all controllers must extend.
+ * The abstract base class that all controllers must extend. Controllers are
+ * singletons that are created on the client to manage behaviors not tied to
+ * single instances.
  */
 export abstract class Controller {}
 
@@ -38,9 +48,9 @@ export class CrochetClientImplementation extends CrochetCore {
     public async start(): Promise<void> {
         if (this.startPromise === undefined) {
             this.startPromise = new Promise<void>((resolve) => {
-                Promise.spawn(() => {
+                Promise.defer(() => {
                     script.Parent?.WaitForChild('Started');
-                    this.controllers.values().forEach((controller) => {
+                    Object.values(this.controllers).forEach((controller) => {
                         if ('onStart' in controller) {
                             (controller as OnStart).onStart();
                         }
@@ -56,17 +66,6 @@ export class CrochetClientImplementation extends CrochetCore {
             });
         }
         return this.startPromise;
-    }
-
-    /**
-     *  Register mulitple controllers at once.
-     *
-     * @param controllerConstructors The constuctors of multiple controllers being registered
-     * @throws Controllers can only be registered before start() has been called
-     * @throws Controllers can only be registered once
-     */
-    public registerControllers(controllerConstructors: ControllerConstructor[]): void {
-        controllerConstructors.forEach((controllerConstructor) => this.registerController(controllerConstructor));
     }
 
     /**
@@ -93,6 +92,17 @@ export class CrochetClientImplementation extends CrochetCore {
         if ('onInit' in controller) {
             (controller as OnInit).onInit();
         }
+    }
+
+    /**
+     *  Register mulitple controllers at once.
+     *
+     * @param controllerConstructors The constuctors of multiple controllers being registered
+     * @throws Controllers can only be registered before start() has been called
+     * @throws Controllers can only be registered once
+     */
+    public registerControllers(controllerConstructors: ControllerConstructor[]): void {
+        controllerConstructors.forEach((controllerConstructor) => this.registerController(controllerConstructor));
     }
 
     /**
@@ -152,7 +162,7 @@ export class CrochetClientImplementation extends CrochetCore {
                 `Parameters are wrong for the function ${functionDefinition.functionIdentifier}!`
             );
             return new Promise((resolve) =>
-                Promise.spawn(() => {
+                Promise.defer(() => {
                     const result = remoteFunction.InvokeServer(...params) as ReturnType<F>;
                     assert(
                         this.verifyFunctionReturnTypeWithDefinition(result, functionDefinition),
