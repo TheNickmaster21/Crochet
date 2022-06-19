@@ -228,7 +228,7 @@ export abstract class CrochetCore {
         const name = functionDefinition.functionIdentifier;
         const typeGuards = this.functionParameterTypeGuards.get(name);
         if (typeGuards !== undefined) {
-            if (typeGuards.size() !== params.size()) {
+            if (typeGuards.size() < params.size()) {
                 return false;
             }
             for (let i = 0; i < typeGuards.size(); i++) {
@@ -402,7 +402,7 @@ export abstract class CrochetCore {
         const name = eventDefinition.eventIdentifier;
         const typeGuards = this.eventParameterTypeGuards.get(name);
         if (typeGuards !== undefined) {
-            if (typeGuards.size() !== params.size()) {
+            if (typeGuards.size() < params.size()) {
                 return false;
             }
             for (let i = 0; i < typeGuards.size(); i++) {
