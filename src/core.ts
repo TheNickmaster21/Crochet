@@ -108,6 +108,21 @@ export class EventDefinition<A extends unknown[]> {
     }
 }
 
+type AttributeDataType =
+    | string
+    | boolean
+    | number
+    | UDim
+    | UDim2
+    | BrickColor
+    | Color3
+    | Vector2
+    | Vector3
+    | NumberSequence
+    | ColorSequence
+    | NumberRange
+    | Rect;
+
 /**
  * Attribute definitions are used to define attributes and an
  * associated type guard. Declaring attributes allows more type
@@ -116,7 +131,7 @@ export class EventDefinition<A extends unknown[]> {
  * @example // A string attribute called 'SecondName' using `@rbxts/t`
  * new AttributeDefinition('SecondName', t.string);
  */
-export class AttributeDefinition<T> {
+export class AttributeDefinition<T extends AttributeDataType> {
     constructor(public name: string, public typeCheck?: TypeCheck<T>) {}
 }
 
@@ -324,7 +339,11 @@ export abstract class CrochetCore {
      * @param instance Roblox instance to get the attribute from
      * @param attribute Attribute object for the attribute to get
      */
-    public getAttribute<T>(instance: Instance, attribute: AttributeDefinition<T>): T | undefined;
+    public getAttribute<T extends AttributeDataType>(
+        instance: Instance,
+        attribute: AttributeDefinition<T>
+    ): T | undefined;
+
     /**
      * Safely returns an attribute from a Roblox instance.
      *
@@ -332,8 +351,12 @@ export abstract class CrochetCore {
      * @param attribute Name of the attribute to get
      * @param typeCheck Optional TypeCheck for the resulting attribute
      */
-    public getAttribute<T>(instance: Instance, attribute: string, typeCheck?: TypeCheck<T>): T | undefined;
-    public getAttribute<T>(
+    public getAttribute<T extends AttributeDataType>(
+        instance: Instance,
+        attribute: string,
+        typeCheck?: TypeCheck<T>
+    ): T | undefined;
+    public getAttribute<T extends AttributeDataType>(
         instance: Instance,
         attribute: AttributeDefinition<T> | string,
         typeCheck?: TypeCheck<T>
@@ -361,7 +384,12 @@ export abstract class CrochetCore {
      * @param attribute Attribute object for the attribute to set
      * @param value Value to set the attribute propery as
      */
-    public setAttribute<T>(instance: Instance, attribute: AttributeDefinition<T>, value: T | undefined): void;
+    public setAttribute<T extends AttributeDataType>(
+        instance: Instance,
+        attribute: AttributeDefinition<T>,
+        value: T | undefined
+    ): void;
+
     /**
      * Safely sets an attribute on a Roblox instance.
      *
@@ -370,8 +398,13 @@ export abstract class CrochetCore {
      * @param value Value to set the attribute propery as
      * @param typeCheck Optional TypeCheck for the attribute
      */
-    public setAttribute<T>(instance: Instance, attribute: string, value: T | undefined, typeCheck?: TypeCheck<T>): void;
-    public setAttribute<T>(
+    public setAttribute<T extends AttributeDataType>(
+        instance: Instance,
+        attribute: string,
+        value: T | undefined,
+        typeCheck?: TypeCheck<T>
+    ): void;
+    public setAttribute<T extends AttributeDataType>(
         instance: Instance,
         attribute: AttributeDefinition<T> | string,
         value: T | undefined,

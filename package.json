@@ -1,6 +1,6 @@
 {
     "name": "@rbxts/crochet",
-    "version": "1.0.3",
+    "version": "1.1.0",
     "description": "Crochet is a framework for Roblox games using roblox-ts.",
     "repository": {
         "type": "git",
