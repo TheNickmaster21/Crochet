@@ -5,6 +5,7 @@
         "jsx": "react",
         "jsxFactory": "Roact.createElement",
         "module": "commonjs",
+        "moduleDetection": "force",
         "moduleResolution": "Node",
         "noLib": true,
         "resolveJsonModule": true,

@@ -7,8 +7,9 @@ Crochet is a framework for Roblox games using roblox-ts.
 ## Installing
 
 In your roblox-ts project, run:
+
 ```bash
-npm install -g @rbxts/crochet
+npm install @rbxts/crochet
 ```
 
 ## Examples
